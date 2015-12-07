@@ -47,8 +47,8 @@ class Connection:
         Closes the socket
         :return:
         """
-        self._socket.close()
         self.connected = False
+        self._socket.close()
 
     def send_message(self, msg: Message):
         """
@@ -60,6 +60,7 @@ class Connection:
         if self.connected:
             self._socket.send(msg.pack())
         # TODO: some error handling maybe?
+        print("Sending this message:\n", msg.pack())
 
     def _listen(self):
         """
@@ -70,25 +71,27 @@ class Connection:
             # Todo: Error handling..
             return
 
-        self.is_listening.acquire(True, -1)  # Use this to keep Plugin runing
+        self.is_listening.acquire(True)  # Use this to keep Plugin runing
         while True and self.connected:
-            data = self._socket.recv(self._buffer_size)
+            try:
+                data = self._socket.recv(self._buffer_size)
+            except:
+                if(self.connected):
+                    print("Ooops something went wrong with your connection")
+                self.is_listening.release()
+                return
+
             messages = Message.unpack(data)
 
             if messages is None:
                 # TODO: Maybe some handling? / Is error handling needed?
                 continue
 
-            print('Recieved this message(s): \n', list(map(lambda x: x.body, messages)))
+            print('Recieved this (these) message(s): \n', list(map(lambda m: m.__str__(), messages)))
             for unpacked in messages:
                 if unpacked is None:
                     # TODO: Handle this
                     continue
-                elif unpacked.get_type() == 0 and unpacked.method == "stop":
-                    # TODO: Well this doesn't look like good code
-                    self.disconnect()
-                    self.is_listening.release() # Tell everyone we are done
-                    return
                 elif unpacked.get_type() == 0:
                     # type == 0  => Message is request
                     self._dispatcher.dispatch(unpacked)

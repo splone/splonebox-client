@@ -1,5 +1,5 @@
 from types import FunctionType
-
+import ctypes
 from Splonecli.Api.apicall import ApiRegister, ApiRun
 from Splonecli.Connection.connection import Connection
 from Splonecli.Connection.dispatcher import Dispatcher
@@ -10,6 +10,8 @@ class Plugin:
     remote_functions = []
 
     def __init__(self, apikey: str, name: str, desc: str, author: str, licen: str):
+        Plugin.remote_functions.append((self.stop, ["stop", "terminates the plugin", []]))
+
         # [<api key>, <name>, <description>, <author>, <license>]
         self.metadata = [apikey, name, desc, author, licen]
         self._connection = Connection()
@@ -69,19 +71,29 @@ class Plugin:
         """
         self._connection.is_listening.acquire()
 
+    def stop(self):
+        self._connection.disconnect()
+
 
 class RemoteFunction(object):
     """
     Annotate Remote Functions with @RemoteFunction and import Plugin.RemoteFunction
 
-    Make sure,  that your remote functions have defaullt values for their parameters
-    ( Add other options?)
+
+    Make sure,  that you specify the types for your parameters:
+
+
+    Valid choices:
+     ctypes.c_bool, ctypes.c_byte, ctypes.c_uint64, ctypes.c_int64, ctypes.c_double, ctypes.c_char_p
 
     GOOD:
-        foo(x = 0, p = "")
+        foo(x: ctypes._uint64, p: ctypes.c_char_p)
     BAD:
         foo(x,p)
+
     """
+    _default_arg_values = {ctypes.c_bool: False, ctypes.c_byte: "", ctypes.c_uint64: -1, ctypes.c_int64: -1,
+                           ctypes.c_double: 0.0, ctypes.c_char_p: "", ctypes.c_long: -1}
 
     def __init__(self, function: FunctionType):
         # TODO: Is there a better way to handle this?
@@ -90,11 +102,21 @@ class RemoteFunction(object):
         self.__name__ = function.__name__
         self.__doc__ = function.__doc__
         self.__defaults__ = function.__defaults__
+        self.args = []
+        argc = function.__code__.co_argcount
 
-        args = []
-        if function.__defaults__ is not None:
-            args = list(function.__defaults__)
-            assert (len(args) == function.__code__.co_argcount)
+        argtypes = function.__annotations__
+        if len(argtypes) != 0:
+            print(argtypes)
+            argnames = function.__code__.co_varnames[:argc]
+            for n in argnames:
+                arg = self._default_arg_values.get(argtypes[n])
+                assert(arg is not None)
+                self.args.append(arg)
+
+        elif function.__defaults__ is not None:
+            self.args = list(function.__defaults__)
+            assert (len(self.args) == argc)
         else:
             assert (function.__code__.co_argcount == 0)
 
@@ -102,11 +124,10 @@ class RemoteFunction(object):
         if doc is None:
             doc = ""
 
-        # TODO: Is there a better way to communicate between thse two modules?
-        Plugin.remote_functions.append((function, [function.__name__, doc, args]))
+        # TODO: Is there a better way to communicate between these two modules?
+        Plugin.remote_functions.append((function, [function.__name__, doc, self.args]))
 
     def __call__(self, *args, **kwargs):
         # TODO: Should it be possible to call a remote function locally?
         print("You are calling a remote function locally!")
         self.fun(*args)
-

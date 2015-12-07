@@ -1,18 +1,19 @@
+import ctypes
 import socket
 import sys
 from datetime import datetime
-
-
 # ---- THIS IS A TEST PLUGIN ---
 from Splonecli.Api.plugin import RemoteFunction
 
+
 @RemoteFunction
-def portscan(ip="", p_range_start=0, p_range_end=0):
+def portscan(ip: ctypes.c_char_p, p_range_start: ctypes.c_int64, p_range_end: ctypes.c_int64):
     """
     Please Note, 99% of this code is stolen from here:
     http://www.pythonforbeginners.com/code-snippets-source-code/port-scanner-in-python
     """
 
+    assert(p_range_end >= 0 and p_range_start >= 0)
     # Enter Host to scan
     remoteServerIP = socket.gethostbyname(ip)
 

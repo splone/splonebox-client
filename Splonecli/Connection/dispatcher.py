@@ -1,5 +1,4 @@
-from types import FunctionType
-
+import types
 from Splonecli.Api.apicall import Apicall
 from Splonecli.Connection.message import MRequest
 
@@ -13,7 +12,7 @@ class Dispatcher:
         self._functions = {}
 
     def register_function(self, foo):
-        assert(isinstance(foo, FunctionType))
+        assert(isinstance(foo, (types.FunctionType, types.MethodType)))
         assert (self._functions.get(foo.__name__) is None)
         self._functions[foo.__name__] = foo
         pass
