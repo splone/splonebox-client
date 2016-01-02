@@ -1,36 +1,33 @@
-from Splonecli.Connection.message import MRequest
+from Splonecli.Rpc.message import MRequest, MResponse
 
-# TODO: This whole thing might get removed. -- Message and Apicall should be merged if possible
+
 class Apicall:
     """
     Wraps :class:`Message` for convenience
+    This is mostly here to show what the calls look like.
 
     splonebox specific messages are defined here
     """
+
     def __init__(self):
-        self.request = MRequest()
+        self.msg = MRequest()
 
     @staticmethod
     def from_Request(msg: MRequest):
         """
-
-
         :param msg:
         :return:
         """
         name = msg.method
-        if  name == "register":
+        if name == "run":
             call = Apicall()
-            call.request = msg
-            call.__class__ = ApiRegister
-            return call
-        elif name == "run":
-            call = Apicall()
-            call.request = msg
+            call.msg = msg
+            call.msg.body[0][0] = call.msg.body[0][0].decode('ascii')
+            call.msg.body[1] = call.msg.body[1].decode('ascii')
             call.__class__ = ApiRun
             return call
+        raise InvalidApiCallError()
 
-        return None
 
 class ApiRegister(Apicall):
     """
@@ -61,10 +58,11 @@ class ApiRegister(Apicall):
         ]
     ]
     """
+
     def __init__(self, metadata, functions):
         super().__init__()
-        self.request.method = "register"
-        self.request.body = [metadata, functions]
+        self.msg.method = "register"
+        self.msg.body = [metadata, functions]
 
 
 class ApiRun(Apicall):
@@ -87,17 +85,26 @@ class ApiRun(Apicall):
             ]
     ]
     """
+
     def __init__(self, apikey: str, function_name: str, args: []):
         super().__init__()
-        self.request = MRequest()
-        self.request.method = "run"
-        self.request.body = [[apikey], function_name, args]
+        self.msg = MRequest()
+        self.msg.method = "run"
+        self.msg.body = [[apikey], function_name, args]
 
     def get_method_args(self):
-        return self.request.body[2]
+        return self.msg.body[2]
 
-    def get_api_key(self):
-        return self.request.body[0][0].decode('ascii')
+    def get_api_key(self) -> str:
+        return self.msg.body[0][0]
 
-    def get_method_name(self):
-        return self.request.body[1].decode('ascii')
+    def get_method_name(self) -> str:
+        return self.msg.body[1]
+
+
+class InvalidApiCallError(Exception):
+    def __init__(self, value: str):
+        self.value = value
+
+    def __str__(self) -> str:
+        return self.value
