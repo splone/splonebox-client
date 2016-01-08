@@ -12,8 +12,8 @@ def portscan(ip: ctypes.c_char_p, p_range_start: ctypes.c_int64, p_range_end: ct
     Please Note, 99% of this code is stolen from here:
     http://www.pythonforbeginners.com/code-snippets-source-code/port-scanner-in-python
     """
-
-    assert(p_range_end >= 0 and p_range_start >= 0)
+    print(p_range_start, " ", p_range_end)
+    assert (p_range_end >= 0 and p_range_start >= 0)
     # Enter Host to scan
     remoteServerIP = socket.gethostbyname(ip)
 
@@ -27,7 +27,7 @@ def portscan(ip: ctypes.c_char_p, p_range_start: ctypes.c_int64, p_range_end: ct
 
     # Using the range function to specify ports (here it will scans all ports between 1 and 1024)
     # We also put in some error handling for catching errors
-
+    returnval = []
     try:
         for port in range(p_range_start, p_range_end):
             sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -35,7 +35,9 @@ def portscan(ip: ctypes.c_char_p, p_range_start: ctypes.c_int64, p_range_end: ct
             if result == 0:
                 # if a socket is listening it will print out the port number
                 print("Port {}: \t Open".format(port))
+                returnval.append(port)
             sock.close()
+
 
     # Dont press any buttons or you will screw up the scanning, so i added a keyboard exception
     except KeyboardInterrupt:
@@ -58,3 +60,4 @@ def portscan(ip: ctypes.c_char_p, p_range_start: ctypes.c_int64, p_range_end: ct
 
     # Printing the information to screen
     print('Scanning Completed in: ', total)
+    return returnval
