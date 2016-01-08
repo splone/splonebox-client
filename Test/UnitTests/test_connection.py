@@ -3,7 +3,7 @@ import unittest
 import unittest.mock as mock
 from _thread import start_new_thread
 
-from Rpc.connection import Connection
+from Splonecli.Rpc.connection import Connection
 from Test import mocks
 
 
