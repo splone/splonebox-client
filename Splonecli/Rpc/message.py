@@ -1,169 +1,197 @@
 from uuid import uuid4
-
 import msgpack
 
 
 class Message:
-    """ Mother of all messages. May be a register, request, response or notification message.
-        See here for specs: https://github.com/msgpack-rpc/msgpack-rpc/blob/master/spec.md """
-    unpacker = msgpack.Unpacker()
+	""" Mother of all messages. May be a register, request, response or notification message.
+		See here for specs: https://github.com/msgpack-rpc/msgpack-rpc/blob/master/spec.md """
 
-    def __init__(self):
-        self._type = None
-        self._msgid = uuid4().int >> 96
-        # TODO: There might me more to this
-        self.body = None
+	_max_message_id = pow(2, 32)
 
-    def __ne__(self, other) -> bool:
-        return not self.__eq__(other)
+	def __init__(self):
+		self._type = None
+		self._msgid = None
 
-    def get_type(self) -> int:
-        """
-        Returns the type of the message
+	# TODO: There might me more to this
 
-        :return: Message Type (0: Request, 1: Response, 2: Notify)
-        """
-        return self._type
+	def __ne__(self, other) -> bool:
+		return not self.__eq__(other)
 
-    def get_msgid(self) -> int:
-        """
-        Returns the message ID
-        :return: Some random Message ID
-        """
-        return self._msgid
+	def get_type(self) -> int:
+		"""
+		Returns the type of the message
 
-    def pack(self) -> bytes:  # Has to be implemented
-        """
-        This method is used to serialize the message
-        """
-        pass
+		:return: Message Type (0: Request, 1: Response, 2: Notify)
+		"""
+		return self._type
 
-    @staticmethod
-    def unpack(s: bytes) -> []:
-        """
-        deserializes bytes to msgpack-messages
+	def get_msgid(self) -> int:
+		"""
+		Returns the message ID
+		:return: Some random Message ID
+		"""
+		return self._msgid
 
-        :param s:  byte stream which ultimately contains a msgpack-formatted message :)
-        :return: A List of Message Objects if Messages are available or None
-        """
-        Message.unpacker.feed(s)
-        messages = []
-        for unpacked in Message.unpacker:
-            msg = Message()
-            msg._type = unpacked[0]
-            msg._msgid = unpacked[1]
+	def pack(self) -> bytes:  # Has to be implemented
+		"""
+		This method is used to serialize the message
+		"""
+		pass
 
-            if msg._type == 0:
-                msg.__class__ = MRequest
-                msg.method = unpacked[2].decode('ascii')
-                msg.body = unpacked[3]
-                messages.append(msg)
+	@staticmethod
+	def unpack(unpacked):
+		"""
+		deserializes bytes to msgpack-messages
 
-            elif msg._type == 1:
-                msg.__class__ = MResponse
-                msg.error = unpacked[2]
-                msg.body = unpacked[3]
-                messages.append(msg)
+		:param unpacked: A message unpacked by :msgpack
+		:return: A List of Message Objects if Messages are available or None
+		"""
 
-            elif msg._type == 2:
-                msg.__class__ = MNotify
-                msg.body = unpacked[2]
-                messages.append(msg)
+		if not isinstance(unpacked, list) or not 2 < len(unpacked) < 5:
+			raise InvalidMessageError("Invalid form")
 
-            else:
-                msg._type = -1  # INVALID MESSAGE!
+		if not isinstance(unpacked[0], int) or unpacked[0] not in (0, 1, 2):
+			raise InvalidMessageError("Invalid type")
 
-        return messages
+		if not isinstance(unpacked[1], int) or unpacked[1] < 0 or \
+						unpacked[1] > Message._max_message_id:
+			raise InvalidMessageError("Invalid Message Id")
+
+		t = unpacked[0]
+
+		if t == 0:
+			if not isinstance(unpacked[2], bytes):
+				raise InvalidMessageError("Invalid method")
+			if not isinstance(unpacked[3], list):
+				raise InvalidMessageError("Invalid body")
+
+			msg = MRequest()
+			msg._msgid = unpacked[1]
+			msg.function = unpacked[2].decode('ascii')
+			msg.arguments = unpacked[3]
+			return msg
+
+		elif t == 1:
+			if unpacked[2] is None and unpacked[3] is None:
+				raise InvalidMessageError("error and result are both None")
+			if not isinstance(unpacked[2], (list, type(None))):
+				raise InvalidMessageError("Invalid Error")
+			if not isinstance(unpacked[3], (list, type(None))):
+				raise InvalidMessageError("Invalid Result")
+
+			msg = MResponse(unpacked[1])
+			msg.error = unpacked[2]
+			msg.result = unpacked[3]
+			return msg
+
+		elif t == 2:
+			if not isinstance(unpacked[2], list):
+				raise InvalidMessageError("Notification body is invalid")
+			msg = MNotify()
+			msg._msgid = unpacked[1]
+			msg.body = unpacked[2]
+			return msg
 
 
 class MRequest(Message):
-    """
-    Request message
+	"""
+	Request message
 
-    [<message id>, <message type>, <method name>, <Arguments>[]]
-    """
+	[<message id>, <message type>, <function name>, <Arguments>[]]
+	"""
 
-    def __init__(self):
-        super().__init__()
-        self.method = None
-        self._type = 0
+	def __init__(self):
+		super().__init__()
+		self.function = None
+		self.arguments = None
+		self._msgid = uuid4().int % Message._max_message_id
+		self._type = 0
 
-    def __eq__(self, other) -> bool:
-        return type(self) == type(other) and self._type == other.get_type() \
-               and self._msgid == other.get_msgid() \
-               and self.method == other.method and self.body == other.body
+	def __eq__(self, other) -> bool:
+		return self._msgid == other.get_msgid() and self.function == other.function \
+			   and self.arguments == other.arguments
 
-    def __str__(self) -> str:
-        return str([self._type, self._msgid, self.method, self.body])
+	def __str__(self) -> str:
+		return str([self._type, self._msgid, self.function, self.arguments])
 
-    def pack(self) -> bytes:
-        if self._type is None or self._msgid is None or self.body is None \
-                or self.method is None:
-            raise InvalidMessageError("Unable to pack Request message:\n" + self.__str__())
-        else:
-            return msgpack.packb([self._type, self._msgid, self.method, self.body],
-                                 use_bin_type=True)
+	def pack(self) -> bytes:
+		if not isinstance(self.function, str) or \
+				not isinstance(self.arguments, list):
+			raise InvalidMessageError(
+				"Unable to pack Request message:\n" + self.__str__())
+		else:
+			return msgpack.packb(
+				[self._type, self._msgid, self.function, self.arguments],
+				use_bin_type=True)
 
 
 class MResponse(Message):
-    """
-    Response message
+	"""
+	Response message
 
-    [<message id>, <message type>, <error>, <result>]
-    """
+	[<message id>, <message type>, <error>, <result>]
+	"""
 
-    def __init__(self, msgid: int):
-        super().__init__()
-        self._msgid = msgid
-        self.error = None
-        self._type = 1
+	def __init__(self, msgid: int):
+		if msgid > Message._max_message_id or msgid < 0:
+			raise InvalidMessageError("Invalid Msg id")
+		super().__init__()
+		self._msgid = msgid
+		self.error = None
+		self.result = None
+		self._type = 1
 
-    def __eq__(self, other) -> bool:
-        return type(self) == type(
-            other) and self._type == other.get_type() and self._msgid == other.get_msgid() \
-               and self.error == other.error and self.body == other.body
+	def __eq__(self, other) -> bool:
+		return self._msgid == other.get_msgid() \
+			   and self.error == other.error and self.result == other.result
 
-    def __str__(self) -> str:
-        return str([self._type, self._msgid, self.error, self.body])
+	def __str__(self) -> str:
+		return str([self._type, self._msgid, self.error, self.result])
 
-    def pack(self) -> bytes:
-        if self._type is None or self._msgid is None or (self.error is None and self.body is None):
-            raise InvalidMessageError("Unable to pack Response message:\n" + self.__str__())
-        else:
-            return msgpack.packb([self._type, self._msgid, self.error, self.body],
-                                 use_bin_type=True)
+	def pack(self) -> bytes:
+		if (self.error is None and self.result is None) or \
+				not isinstance(self.error, (list, type(None))) or \
+				not isinstance(self.result, (list, type(None))):
+			raise InvalidMessageError(
+				"Unable to pack Response message:\n" + self.__str__())
+		else:
+			return msgpack.packb(
+				[self._type, self._msgid, self.error, self.result],
+				use_bin_type=True)
 
 
 class MNotify(Message):
-    """
-    Response message
+	"""
+	Response message
 
-    [<message id>, <message type>, <Message Body>[]]
-    """
+	[<message id>, <message type>, <Message Body>[]]
+	"""
 
-    def __init__(self):
-        super().__init__()
-        self._type = 2
+	def __init__(self):
+		super().__init__()
+		self.body = None
+		self._msgid = uuid4().int % Message._max_message_id
+		self._type = 2
 
-    def __eq__(self, other) -> bool:
-        return type(self) == type(other) and self._type == other.get_type() \
-               and self._msgid == other.get_msgid() and self.body == other.body
+	def __eq__(self, other) -> bool:
+		return self._msgid == other.get_msgid() and self.body == other.body
 
-    def __str__(self) -> str:
-        return str([self._type, self._msgid, self.body])
+	def __str__(self) -> str:
+		return str([self._type, self._msgid, self.body])
 
-    def pack(self) -> bytes:
-        if self._type is None or self._msgid is None or self.body is None:
-            raise InvalidMessageError("Unable to pack Notification message:\n" + self.__str__())
-        else:
-            return msgpack.packb(
-                [self._type, self._msgid, self.body], use_bin_type=True)
+	def pack(self) -> bytes:
+		if not isinstance(self.body, list):
+			raise InvalidMessageError(
+				"Unable to pack Notification message:\n" + self.__str__())
+		else:
+			return msgpack.packb(
+				[self._type, self._msgid, self.body], use_bin_type=True)
 
 
 class InvalidMessageError(Exception):
-    # TODO: Maybe add a separate exception for handling more specific errors
-    def __init__(self, value):
-        self.value = value
+	# TODO: Maybe add a separate exception for handling more specific errors
+	def __init__(self, value):
+		self.value = value
 
-    def __str__(self) -> str:
-        return self.value
+	def __str__(self) -> str:
+		return self.value

@@ -1,91 +1,135 @@
+import logging
 from queue import Queue
-from Splonecli.Rpc.message import MResponse, InvalidMessageError, MRequest
+
+import sys
+
+from Splonecli.Rpc.message import MResponse, MRequest, InvalidMessageError
 from Splonecli.Rpc.msgpackrpc import MsgpackRpc
-from Splonecli.Api.apicall import ApiRegister, ApiRun, Apicall, InvalidApiCallError
+from Splonecli.Api.apicall import ApiRegister, ApiRun
 from Splonecli.Api.remotefunction import RemoteFunction
 
 
 class Plugin:
-    def __init__(self, api_key: str, name: str, desc: str, author: str,
-                 licen: str):
-        RemoteFunction.remote_functions["stop"] = (self._stop, ["stop", "terminates the plugin", []])
+	def __init__(self, api_key: str, name: str, desc: str, author: str,
+				 licence: str, debug=False):
 
-        # [<api key>, <name>, <description>, <author>, <license>]
-        self.metadata = [api_key, name, desc, author, licen]
-        self._rpc = MsgpackRpc()
-        self._rpc.register_function(self._handle_run, "run")
-        self._result_queue = Queue(maxsize=1)  # TODO: Is there a better way? This is for SYNCHRONOUS calls!
-        self.callbacks = {}
+		# register stop function
+		RemoteFunction.remote_functions["stop"] = (
+			self._stop, ["stop", "terminates the plugin", []])
 
-    def connect(self, name: str, port: int):
-        """
-        Connects to given host
+		# [<api key>, <name>, <description>, <author>, <license>]
+		self._metadata = [api_key, name, desc, author, licence]
 
-        :param name: (ip/web address)
-        :param port: Host's Port
-        :return:
-        """
-        self._rpc.connect(name, port)
+		self._rpc = MsgpackRpc()
+		# register run function @ rpc dispatcher
+		self._rpc.register_function(self._handle_run, "run")
 
-    def register(self):
-        """
-        Registers the Plugin and all annotated functions @ the core.
-        -> Make sure you are connected
+		# initialize queue for synchronous calls
+		self._result_queue = Queue(maxsize=1)  # TODO: Is there a better way?
 
-        :return: None
-        """
-        assert (None not in self.metadata)
-        # Register functions remotely
-        # all we need is the function's metadata
-        functions = []
-        for name, inf in RemoteFunction.remote_functions.items():
-            functions.append(inf[1])
-        # Create a register call
-        reg = ApiRegister(self.metadata, functions)
-        self._rpc.send(reg.msg)  # send the msgpack-rpc formatted message
+		# set logging level
+		if debug:
+			logging.basicConfig(level=logging.INFO)
+		logging.info("Plugin object created..\n")
 
-    def _handle_response(self, result):
-        self._result_queue.put(result)
+	def connect(self, name: str, port: int):
+		# Note: This wraps Connection.connect(name,port)
+		"""
+		Connects to given host
 
-    def run(self, api_key: str, function: str, arguments: []):
-        """
-        Run a remote function and synchronously wait for a result
-        :param api_key: Target? api_key
-        :param function: name of the function
-        :param arguments: function arguments
-        :return: result (This is currently a synchronous call!)
-        """
-        self._rpc.send(ApiRun(api_key, function, arguments).msg, self._handle_response)
-        # Okay, remember: This is a synchronous call!
-        return self._result_queue.get()
+		:param name: (ip/web address)
+		:param port: Host's Port
+		:return:
+		:raises: :ConnectionRefusedError if socket is unable to connect
+		:raises: socket.gaierror if Host unknown
+		:raises: :ConnectionError if hostname or port are invalid types
+		"""
+		self._rpc.connect(name, port)
 
-    def wait(self):
-        """
-        Waits until the connection is closed
+	def register(self):
+		"""
+		Registers the Plugin and all annotated functions @ the core.
+		-> Make sure you are connected
 
-        :return:
-        """
-        self._rpc.wait()
+		:return: None
+		"""
 
-    def _stop(self, *args, **kwargs):
-        self._rpc.disconnect()
+		# Register functions remotely
+		# all we need is the function's metadata
+		functions = []
+		for name, inf in RemoteFunction.remote_functions.items():
+			functions.append(inf[1])
+		# Create a register call
 
-    def _handle_run(self, msg: MRequest):
-        # TODO: Make sure this is a valid Request!
-        try:
-            call = Apicall.from_Request(msg)
-        except InvalidApiCallError as e:
-            raise InvalidMessageError(e.__str__())
+		reg = ApiRegister(self._metadata, functions)
 
-        fun = RemoteFunction.remote_functions[call.get_method_name()][0]
+		self._rpc.send(reg.msg)  # send the msgpack-rpc formatted message
 
-        try:
-            ret = fun(call.get_method_args())
-        except Exception as e:
-            raise InvalidMessageError("ERROR! Unable to call function (" + call.get_method_name() + "): " + e.__str__())
+	def _handle_response(self, result: MResponse):
+		"""
+		Default function for handling responses (Synchronous calls!)
+		:param result: Response Message containing result/error
+		:return:
+		"""
+		self._result_queue.put(result)
 
-        # TODO: Handle return ?
-        result = MResponse(msg.get_msgid())
-        result.body = [ret]
-        self._rpc.send(result)
+	def run(self, api_key: str, function: str, arguments: [], has_result=True):
+		"""
+		Run a remote function and synchronously wait for a result
 
+		:param has_result: Does the called function have a result?
+		:param api_key: Target? api_key
+		:param function: name of the function
+		:param arguments: function arguments | empty list or None for no args
+		:return: result (This is currently a synchronous call!)
+		"""
+		if has_result:
+			self._rpc.send(ApiRun(api_key, function, arguments).msg,
+						   self._handle_response)
+			# Okay, remember: This is a synchronous call!
+			return self._result_queue.get()
+		else:
+			self._rpc.send(ApiRun(api_key, function, arguments).msg, None)
+
+	def listen(self):
+		"""
+		Waits until the connection is closed
+		"""
+		self._rpc.wait()
+
+	def _stop(self, *args, **kwargs):
+		self._rpc.disconnect()
+
+	def _handle_run(self, msg: MRequest):
+		"""
+		Callback to handle run requests
+		:param msg: Message containing run Request (MRequest)
+		:return:
+		"""
+
+		# errors are handled by MsgpackRpc._message_callback
+
+		try:
+			call = ApiRun.from_msgpack_request(msg)
+		except InvalidMessageError:
+			# send error
+			return
+
+		try:
+			fun = RemoteFunction.remote_functions[call.get_method_name()][0]
+		except KeyError:
+			# send error
+			return
+
+		try:
+			fun(call.get_method_args())
+		except Exception:
+			# TODO: Figure out a way to handle invalid function calls
+			return
+
+class PluginError(Exception):
+	def __init__(self, value: str):
+		self.value = value
+
+	def __str__(self) -> str:
+		return self.value

@@ -1,110 +1,189 @@
-from Splonecli.Rpc.message import MRequest, MResponse
+import copy
+
+from Splonecli.Rpc.message import MRequest, InvalidMessageError
 
 
-class Apicall:
-    """
-    Wraps :class:`Message` for convenience
-    This is mostly here to show what the calls look like.
+class ApiCall:
+	"""
+	Wraps :class:`Message` for convenience and type checks
 
-    splonebox specific messages are defined here
-    """
+	splonebox specific messages are defined here
+	"""
 
-    def __init__(self):
-        self.msg = MRequest()
-
-    @staticmethod
-    def from_Request(msg: MRequest):
-        """
-        :param msg:
-        :return:
-        """
-        name = msg.method
-        if name == "run":
-            call = Apicall()
-            call.msg = msg
-            call.msg.body[0][0] = call.msg.body[0][0].decode('ascii')
-            call.msg.body[1] = call.msg.body[1].decode('ascii')
-            call.__class__ = ApiRun
-            return call
-        raise InvalidApiCallError()
+	def __init__(self):
+		self.msg = MRequest()
 
 
-class ApiRegister(Apicall):
-    """
-    Register Api call.
+class ApiRegister(ApiCall):
+	"""
+	Register Api call.
 
-    [
-        msgid, # some random number. Handled my :class: `Message`
-        type,  # 0 Since it is a Request Type (See :class: `Message`)
-        method, # "register" for obvious reasons
-        [
-            [                          # Metadata
-                <api key>,
-                <plugin name>,
-                <description>,
-                ...
-            ],
-            [                          # List of functions
-                [                      # Function description (See :Plugin:)
-                    <function name>,
-                    <function descripton>,
-                    [<arg (="")>, <arg(=0)>] # Some Value is given to identify the type
-                                             # Usually "" for string, 0 for int ,
-                                             # b'' for binary data , 0.0 for float, False for Bool
-                ]
-                []
-            ]
+	[
+		msgid, # some random number. Handled my :class: `Message`
+		type,  # 0 Since it is a Request Type (See :class: `Message`)
+		method, # "register" for obvious reasons
+		[
+			[                          # Metadata
+				<api key>,
+				<plugin name>,
+				<description>,
+				...
+			],
+			[                          # List of functions
+				[                      # Function description (See :Plugin:)
+					<function name>,
+					<function descripton>,
+					[<arg (="")>, <arg(=0)>] # Some Value is given to identify the type
+											 # Usually "" for string, 0 for int ,
+											 # b'' for binary data , 0.0 for float, False for Bool
+				]
+				[]
+			]
 
-        ]
-    ]
-    """
+		]
+	]
+	"""
+	_valid_args = ["", 3, -1, False, 2.0, b'']
 
-    def __init__(self, metadata, functions):
-        super().__init__()
-        self.msg.method = "register"
-        self.msg.body = [metadata, functions]
+	def __init__(self, metadata, functions):
+		"""
+
+		:param metadata:
+		:param functions:
+		:return:
+		:raises :InvalidApiCallError
+		"""
+		super().__init__()
+		if metadata is None or None in metadata:
+			raise InvalidApiCallError("Plugin's metadata is not set properly")
+
+		for meta in metadata:
+			if not isinstance(meta, str):
+				raise InvalidApiCallError("Metadata's type has to be string!")
+
+		if functions is None or not isinstance(functions, type([[]])):
+			raise InvalidApiCallError("Malformed functions parameter")
+
+		for fun_meta in functions:
+			if fun_meta is None:
+				raise InvalidApiCallError("function can not be None")
+			if not isinstance(fun_meta[0], str):
+				raise InvalidApiCallError("Function name has to be string!")
+			if not isinstance(fun_meta[1], str):
+				raise InvalidApiCallError(
+					"Function description has to be string!")
+			for arg in fun_meta[2]:
+				# (1 == True) is True..
+				if (arg, type(arg)) not in map(lambda x: (x, type(x)),
+											   ApiRegister._valid_args):
+					raise InvalidApiCallError(
+						"Invalid Type identifier in  argument list")
+
+		self.msg.function = "register"
+		self.msg.arguments = [metadata, functions]
 
 
-class ApiRun(Apicall):
-    """
-    Run Api call
+class ApiRun(ApiCall):
+	"""
+	Run Api call
 
-    [
-        msgid, # some random number. Handled my :class: `Message`
-        type,  # 0 Since it is a Request Type (See :class: `Message`)
-        method, # "run" for obvious reasons
-        [
-            [                          # Metadata
-                <api key>
-            ],
-            <function name>,
-            [                          # Functions
-                <arg1>,
-                <arg2>,
-                ...
-            ]
-    ]
-    """
+	[
+		msgid, # some random number. Handled my :class: `Message`
+		type,  # 0 Since it is a Request Type (See :class: `Message`)
+		method, # "run" for obvious reasons
+		[
+			[                          # Metadata
+				<api key>
+			],
+			<function name>,
+			[                          # Functions
+				<arg1>,
+				<arg2>,
+				...
+			]
+	]
+	"""
+	_valid_types = (str, bytes, int, float, bool)
 
-    def __init__(self, apikey: str, function_name: str, args: []):
-        super().__init__()
-        self.msg = MRequest()
-        self.msg.method = "run"
-        self.msg.body = [[apikey], function_name, args]
+	@staticmethod
+	def from_msgpack_request(msg: MRequest):
+		"""
+		:param msg: A Request received and unpacked with MsgpackRpc. It is
+		assumed, that the strings in msg.body are still in binary format!
+		:return: ApiRun
+		:raises: :InvalidMessageError if provided message is not a valid Run call
+		"""
+		if not isinstance(msg.function, str) or msg.function != "run":
+			raise InvalidMessageError(
+				"Invalid run Request, specified method is not run")
 
-    def get_method_args(self):
-        return self.msg.body[2]
+		if not isinstance(msg.arguments, list) or len(msg.arguments) != 3:
+			raise InvalidMessageError("Message body is faulty")
 
-    def get_api_key(self) -> str:
-        return self.msg.body[0][0]
+		if not isinstance(msg.arguments[0], list) or len(msg.arguments[0]) != 1:
+			raise InvalidMessageError("First element of body has to be a list")
 
-    def get_method_name(self) -> str:
-        return self.msg.body[1]
+		if not isinstance(msg.arguments[0][0], bytes):
+			raise InvalidMessageError("ApiKey is not bytes")
+
+		if not isinstance(msg.arguments[1], bytes):
+			raise InvalidMessageError("Function name is not bytes")
+
+		if not isinstance(msg.arguments[2], list):
+			raise InvalidMessageError("Third element of body has to be a list")
+
+		msg = copy.deepcopy(msg)
+		msg.arguments[0][0] = msg.arguments[0][0].decode('ascii')
+		msg.arguments[1] = msg.arguments[1].decode('ascii')
+
+		for arg in msg.arguments[2]:
+			if not isinstance(arg, ApiRun._valid_types):
+				raise InvalidMessageError("Invalid Argument type!")
+
+		return ApiRun(msg.arguments[0][0], msg.arguments[1], msg.arguments[2])
+
+	def __init__(self, api_key: str, function_name: str, args: []):
+		"""
+
+		:param api_key:
+		:param function_name:
+		:param args:
+		:return:
+		:raises :InvalidApiCallError
+		"""
+		super().__init__()
+
+		if not isinstance(api_key, str):
+			raise InvalidApiCallError("api key has to be a string")
+
+		if not isinstance(function_name, str):
+			raise InvalidApiCallError("function name has to be a string")
+
+		if args is None:
+			args = []
+
+		for arg in args:
+			if not isinstance(arg, ApiRun._valid_types):
+				raise InvalidApiCallError(
+					"Invalid Argument type!")
+
+		self.msg = MRequest()
+		self.msg.function = "run"
+		self.msg.arguments = [[api_key], function_name, args]
+
+	def get_method_args(self):
+		return self.msg.arguments[2]
+
+	def get_api_key(self) -> str:
+		return self.msg.arguments[0][0]
+
+	def get_method_name(self) -> str:
+		return self.msg.arguments[1]
 
 
 class InvalidApiCallError(Exception):
-    def __init__(self, value: str):
-        self.value = value
+	def __init__(self, value: str):
+		self.value = value
 
-    def __str__(self) -> str:
-        return self.value
+	def __str__(self) -> str:
+		return self.value

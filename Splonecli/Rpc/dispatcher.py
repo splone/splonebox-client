@@ -28,12 +28,10 @@ class Dispatcher:
         :param msg:
         :return:
         """
-        if msg.method not in self._functions:
-            raise InvalidMessageError("Function not available: " + msg.method)
-        try:
-            self._functions[msg.method](msg)
-        except InvalidMessageError as e:
-            raise InvalidMessageError("Request: " + msg.method + "\n" + e.value)
+        if msg.function not in self._functions:
+            raise DispatcherError("Function not available: " + msg.function)
+
+        self._functions[msg.function](msg)
 
 
 class DispatcherError(Exception):
