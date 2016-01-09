@@ -75,30 +75,6 @@ class RemoteFunctionTest(unittest.TestCase):
 		fun2.fun.assert_called_with(True, b'', 0, -1, 0.0, "", -1)
 
 		with self.assertRaises(TypeError):
-			fun2(15, b'', 0, -1, 0.0, b'', -1)
-
-		with self.assertRaises(TypeError):
-			fun2(True, 0, 0, -1, 0.0, b'', -1)
-
-		with self.assertRaises(TypeError):
-			fun2(True, b'', "", -1, 0.0, b'', -1)
-
-		with self.assertRaises(TypeError):
-			fun2(True, b'', -1, -1, 0.0, b'', -1)
-
-		with self.assertRaises(TypeError):
-			fun2(True, b'', 0, "", 0.0, b'', -1)
-
-		with self.assertRaises(TypeError):
-			fun2(True, b'', 0, -1, "", b'', -1)
-
-		with self.assertRaises(TypeError):
-			fun2(True, b'', 0, -1, 0.0, 1, -1)
-
-		with self.assertRaises(TypeError):
-			fun2(True, b'', 0, -1, 0.0, b'', "")
-
-		with self.assertRaises(TypeError):
-			fun2(True)
+			fun2([0])
 
 		RemoteFunction.remote_functions = {}

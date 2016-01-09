@@ -64,41 +64,12 @@ class RemoteFunction():
 			self, [self.__name__, doc, self.args])
 
 	def __call__(self, *args, **kwargs):
-		# TODO: if something goes Wrong handle Exception!
-		# TODO: TEST CALL!!!
 		args = args[0]
 		if len(self.args) != len(args):
 			raise TypeError()
 
-		params = []
-
 		for i in range(len(self.args)):
-			if isinstance(self.args[i], bool):  # make sure we don't confuse int
-				if isinstance(args[i], int) and 0 <= args[i] < 2:
-					params.append(bool(args[i]))
-				elif isinstance(args[i], bool):
-					params.append(args[i])
-				else:
-					raise TypeError()
-			elif self.args[i] == 3:
-				if not isinstance(args[i], int) or args[i] < 0:
-					raise TypeError()
-				params.append(args[i])
-			elif self.args[i] == 2.0:
-				if not isinstance(args[i], float):
-					raise TypeError()
-				params.append(args[i])
-			elif self.args[i] == -1:
-				if not isinstance(args[i], int):
-					raise TypeError()
-				params.append(args[i])
-			elif self.args[i] == b'':
-				if not isinstance(args[i], bytes):
-					raise TypeError()
-				params.append(args[i])
-			elif self.args[i] == "":
-				if not isinstance(args[i], bytes):
-					raise TypeError()
-				params.append(args[i].decode('ascii'))
+			if self.args[i] == "":
+				args[i] = args[i].decode('ascii')
 
-		return self.fun(*params)
+		return self.fun(*args)
