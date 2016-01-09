@@ -54,7 +54,9 @@ class MsgpackRpc:
 			try:
 				messages.append(Message.unpack(unpacked))
 			except InvalidMessageError:
-				# Todo: Error handling?
+				m = MResponse(0)
+				m.error = [400, "Invalid Message Format"]
+				self.send(m)
 				pass
 
 		for msg in messages:
@@ -71,16 +73,18 @@ class MsgpackRpc:
 			except InvalidMessageError as e:
 				logging.info(e.value)
 				logging.info(
-					"\n Unable to handle Message\n" + e.__str__())
+					"\n Unable to handle Message\n")
 
-				m = MResponse(
-					msg.get_msgid())  # TODO: This might be an invalid msgid!
-				m.error = [1, "Invalid Message"]  # TODO: error numbers properly
+				m = MResponse(msg.get_msgid())
+				m.error = [400, "Could not handle request! " + e.value]
 				self.send(m)
 
-			except Exception:
-				# make sure no invalid message kills the client
-				pass
+			except Exception as e:
+				logging.warning("Unexpected exception occurred!")
+				logging.warning(e.__str__())
+
+				m = MResponse(msg.get_msgid())
+				m.error = [418, "Unexpected exception occurred!"]
 
 	def register_function(self, foo, name: str):
 		"""
@@ -103,18 +107,18 @@ class MsgpackRpc:
 		:return:
 		"""
 		try:
-			# TODO: Handle response callback exceptions properly
 			self._response_callbacks[msg.get_msgid()](msg)
 			self._response_callbacks.pop(msg.get_msgid())
 		except Exception:
-			if msg.result is None:
+			if msg.error is not None:
 				logging.warning(
-					"Received error unrelated to any message!\n")
-				raise
+					"Received error unrelated to any message!\n"
+					+ msg.error.__str__())
 			else:
 				logging.warning(
-					"The msgid in given response does not match any request!")
-				raise
+					"The msgid in given response does not match any request!\n")
+
+			raise
 		pass
 
 	def _handle_notify(self, msg):

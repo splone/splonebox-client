@@ -71,6 +71,7 @@ class PluginTest(unittest.TestCase):
 
 	def test_handle_run(self):
 		plug = Plugin("abc", "foo", "bar", "bob", "alice")
+		mocks.plug_rpc_send(plug)
 
 		mock = Mock()
 		RemoteFunction.remote_functions["mock"] = (mock, ["mock", "", []])

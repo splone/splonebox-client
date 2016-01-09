@@ -109,22 +109,31 @@ class Plugin:
 
 		# errors are handled by MsgpackRpc._message_callback
 
+		response = MResponse(msg.get_msgid())
+
 		try:
 			call = ApiRun.from_msgpack_request(msg)
 		except InvalidMessageError:
-			# send error
+			response.error= [400, "Received Message is not a valid run call"]
+			self._rpc.send(response)
 			return
 
 		try:
 			fun = RemoteFunction.remote_functions[call.get_method_name()][0]
 		except KeyError:
-			# send error
+			response.error =[404, "Function does not exist!"]
+			self._rpc.send(response)
 			return
 
 		try:
 			fun(call.get_method_args())
+		except TypeError:
+			response.error = [400, "Invalid Argument(s)"]
+			self._rpc.send(response)
 		except Exception:
-			# TODO: Figure out a way to handle invalid function calls
+			response.error = [420, "Function Execution failed"]
+			self._rpc.send(response)
+			# TODO: More percise response
 			return
 
 class PluginError(Exception):
