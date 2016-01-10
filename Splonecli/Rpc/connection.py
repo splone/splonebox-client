@@ -13,18 +13,20 @@ class Connection:
 		self._connected = False
 		self.is_listening = Lock()
 
-	def connect(self, hostname: str, port: int, msg_callback, listen=True):
+	def connect(self, hostname: str, port: int, msg_callback, listen=True,
+				listen_on_new_thread=True):
 		"""
 		Connect to given host
-		:param msg_callback: This function gets called on incoming messages. It has one argument of type Message
+		:param msg_callback: This function gets called on incoming messages.
+		It has one argument of type Message
 		:param hostname: hostname
 		:param port: port
+		:param listen: should we listen for incoming messages?
+		:param listen_on_new_thread: should we listen in a new thread?
 
 		:raises: :ConnectionRefusedError if socket is unable to connect
 		:raises: socket.gaierror if Host unknown
 		:raises: :ConnectionError if hostname or port are invalid types
-
-		:return:
 		"""
 
 		if not isinstance(hostname, str):
@@ -43,19 +45,27 @@ class Connection:
 		self._connected = True
 
 		if listen:
-			self.listen(msg_callback)
+			self.listen(msg_callback, new_thread=listen_on_new_thread)
 
 	def listen(self, msg_callback, new_thread=True):
-		if(new_thread):
-			start_new_thread(self._listen, (msg_callback,))
-		else:
-			self._listen(msg_callback)
+		"""
+		Small wrapper for the _listen function (mostly to make tests easier to
+		implement, could be useful in the future as well)
 
-		logging.info("Startet listening..")
+		:param new_thread: Should we listen in a new thread?
+		:param msg_callback: This function gets called on incoming messages.
+		It has one argument of type Message
+		"""
+		if new_thread:
+			start_new_thread(self._listen, (msg_callback,))
+			logging.info("Startet listening..")
+		else:
+			logging.info("Startet listening..")
+			self._listen(msg_callback)
 
 	def disconnect(self):
 		"""
-		Closes the socket
+		Closes the connection
 		:return:
 		"""
 		self._connected = False
@@ -63,9 +73,10 @@ class Connection:
 
 	def send_message(self, msg: bytes):
 		"""
-		:raises: BrokenPipeError
-		:param msg:
-		:return:
+		Sends given message to server if connected
+
+		:raises: BrokenPipeError if something is wrong with the connection
+		:param msg: Message to be sent
 		"""
 		self._socket.send(msg)
 
@@ -73,7 +84,6 @@ class Connection:
 		"""
 		Listens for incoming messages.
 		:raises: ConnectionError if connection is unexpectedly terminated
-		:return:
 		"""
 
 		self.is_listening.acquire(True)  # Use this to keep Plugin running
@@ -82,6 +92,7 @@ class Connection:
 				data = self._socket.recv(self._buffer_size)
 			except socket.error:
 				if self._connected:
+					# something went wrong
 					raise
 
 				self.is_listening.release()

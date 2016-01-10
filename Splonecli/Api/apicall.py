@@ -45,13 +45,13 @@ class ApiRegister(ApiCall):
 	"""
 	_valid_args = ["", 3, -1, False, 2.0, b'']
 
-	def __init__(self, metadata, functions):
+	def __init__(self, metadata: [], functions: []):
 		"""
 
-		:param metadata:
-		:param functions:
-		:return:
-		:raises :InvalidApiCallError
+		:param metadata: The Plugins Metadata: ["api_key", "name", "description",
+		"author", "license"]
+		:param functions: list of function descriptions [name,desc,[arg1,arg2..]]
+		:raises :InvalidApiCallError if the information is invalid
 		"""
 		super().__init__()
 		if metadata is None or None in metadata:
@@ -145,11 +145,10 @@ class ApiRun(ApiCall):
 	def __init__(self, api_key: str, function_name: str, args: []):
 		"""
 
-		:param api_key:
-		:param function_name:
-		:param args:
-		:return:
-		:raises :InvalidApiCallError
+		:param api_key: api_key of the plugin to be called
+		:param function_name: function wto be called
+		:param args: list of arguments for the remote function
+		:raises :InvalidApiCallError if the Information is invalid
 		"""
 		super().__init__()
 

@@ -4,7 +4,8 @@ import msgpack
 
 from Splonecli.Rpc.connection import Connection
 from Splonecli.Rpc.dispatcher import Dispatcher, DispatcherError
-from Splonecli.Rpc.message import Message, InvalidMessageError, MResponse
+from Splonecli.Rpc.message import Message, InvalidMessageError, MResponse, \
+	MNotify
 
 
 class MsgpackRpc:
@@ -17,18 +18,22 @@ class MsgpackRpc:
 
 	def connect(self, host: str, port: int):
 		"""
-		:param host:
-		:param port:
+		Connect to given host
+
+		:param host: Hostname to connect to
+		:param port: Port to connect to
 		:raises: :ConnectionRefusedError if socket is unable to connect
-		:raises: socket.gaierror if Host unknown
+		:raises: :socket.gaierror if Host unknown
 		:raises: :ConnectionError if hostname or port are invalid types
 		"""
 		self._connection.connect(host, port, self._message_callback)
 
 	def send(self, msg: Message, response_callback=None):
 		"""
-		:param msg:
-		:param response_callback:
+		Sends the given message to the server
+
+		:param msg: message to send
+		:param response_callback: a function that will be called on response
 		:raises :InvalidMessageError if msg.pack() is not possible
 		:raises :BrokenPipeError if connection is not established
 		:return: None
@@ -42,11 +47,11 @@ class MsgpackRpc:
 			self._response_callbacks[msg.get_msgid()] = response_callback
 		# if response callback is None we don't expect a response
 
-	def _message_callback(self, data):
+	def _message_callback(self, data: bytes):
 		"""
+		Handles incoming Messages, is called by :Connection
 
-		:param data:
-		:return:
+		:param data: Msgpack serialized message
 		"""
 		self._unpacker.feed(data)
 		messages = []
@@ -70,13 +75,13 @@ class MsgpackRpc:
 				elif msg.get_type() == 2:
 					self._handle_notify(msg)
 
-			except InvalidMessageError as e:
-				logging.info(e.value)
+			except (InvalidMessageError, DispatcherError) as e:
+				logging.info(e.name)
 				logging.info(
 					"\n Unable to handle Message\n")
 
 				m = MResponse(msg.get_msgid())
-				m.error = [400, "Could not handle request! " + e.value]
+				m.error = [400, "Could not handle request! " + e.name]
 				self.send(m)
 
 			except Exception as e:
@@ -88,22 +93,28 @@ class MsgpackRpc:
 
 	def register_function(self, foo, name: str):
 		"""
-		:param name:
-		:param foo: a function reference
-		:return:
+		:param name: Name of the function
+		:param foo: A function reference
+		:raises DispatcherError
 		"""
 		self._dispatcher.register_function(foo, name)
 
 	def disconnect(self):
+		"""
+		Disconnect from server
+		"""
 		self._connection.disconnect()
 
-	def wait(self):
+	def listen(self):
+		"""
+		Blocks until connection is closed
+		"""
 		self._connection.is_listening.acquire()
 
 	def _handle_response(self, msg: MResponse):
 		"""
-
-		:param msg:
+		Handler for response messages (called by _message_callback)
+		:param msg: MResponse
 		:return:
 		"""
 		try:
@@ -121,10 +132,10 @@ class MsgpackRpc:
 			raise
 		pass
 
-	def _handle_notify(self, msg):
+	def _handle_notify(self, msg: MNotify):
 		"""
-			Notfify Messages are ignored for now
-			:param msg:
+			Notfication messages are not implemented yes
+			:param msg: :MNotify
 			:return:
 			"""
 		pass

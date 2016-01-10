@@ -12,8 +12,6 @@ class Message:
 		self._type = None
 		self._msgid = None
 
-	# TODO: There might me more to this
-
 	def __ne__(self, other) -> bool:
 		return not self.__eq__(other)
 
@@ -41,10 +39,12 @@ class Message:
 	@staticmethod
 	def unpack(unpacked):
 		"""
-		deserializes bytes to msgpack-messages
+		Returns a Request, MResponse or MNotify depending on the type of
+		the unpacked message
 
 		:param unpacked: A message unpacked by :msgpack
-		:return: A List of Message Objects if Messages are available or None
+		:return: :MRequest , :MResponse or MNotify
+		:raises :InvalidMessageError if message is not a valid request
 		"""
 
 		if not isinstance(unpacked, list) or not 2 < len(unpacked) < 5:
@@ -115,6 +115,11 @@ class MRequest(Message):
 		return str([self._type, self._msgid, self.function, self.arguments])
 
 	def pack(self) -> bytes:
+		"""
+		Packs the request using :msgpack
+		:return: message, serialized using msgpack
+		:raises :InvalidMessageError if contents are invalid
+		"""
 		if not isinstance(self.function, str) or \
 				not isinstance(self.arguments, list):
 			raise InvalidMessageError(
@@ -133,6 +138,9 @@ class MResponse(Message):
 	"""
 
 	def __init__(self, msgid: int):
+		"""
+		:param msgid: msgid of the request this message is responding to
+		"""
 		if msgid > Message._max_message_id or msgid < 0:
 			raise InvalidMessageError("Invalid Msg id")
 		super().__init__()
@@ -149,6 +157,10 @@ class MResponse(Message):
 		return str([self._type, self._msgid, self.error, self.result])
 
 	def pack(self) -> bytes:
+		"""
+		Packs the response using :msgpack
+		:return: message, serialized using msgpack
+		"""
 		if (self.error is None and self.result is None) or \
 				not isinstance(self.error, (list, type(None))) or \
 				not isinstance(self.result, (list, type(None))):
@@ -162,7 +174,7 @@ class MResponse(Message):
 
 class MNotify(Message):
 	"""
-	Response message
+	Notify message
 
 	[<message id>, <message type>, <Message Body>[]]
 	"""
@@ -180,6 +192,10 @@ class MNotify(Message):
 		return str([self._type, self._msgid, self.body])
 
 	def pack(self) -> bytes:
+		"""
+		Packs the notification using :msgpack
+		:return: message, serialized using msgpack
+		"""
 		if not isinstance(self.body, list):
 			raise InvalidMessageError(
 				"Unable to pack Notification message:\n" + self.__str__())
@@ -189,9 +205,8 @@ class MNotify(Message):
 
 
 class InvalidMessageError(Exception):
-	# TODO: Maybe add a separate exception for handling more specific errors
-	def __init__(self, value):
-		self.value = value
+	def __init__(self, name):
+		self.name = name
 
 	def __str__(self) -> str:
-		return self.value
+		return self.name
