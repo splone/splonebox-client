@@ -2,10 +2,10 @@ import ctypes
 import logging
 import unittest
 
-from Test.FunctionalTests import test_remote_calls, test_local_call
-from Test.UnitTests import test_connection, test_dispatcher, test_message, \
+from Test.Functional import test_remote_calls, test_local_call
+from Test.Unit import test_connection, test_dispatcher, test_message, \
     test_msgpackrpc, test_plugin, test_remotefunction
-from Test.UnitTests import test_apicall
+from Test.Unit import test_apicall
 
 # create test suite
 suite = unittest.TestSuite()
