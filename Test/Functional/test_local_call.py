@@ -1,11 +1,8 @@
 import ctypes
 import unittest
-import unittest.mock as mock
 from _thread import start_new_thread
 from unittest.mock import Mock
-
 from multiprocessing import Lock
-
 from Splonecli.Api.apicall import ApiRun
 from Splonecli.Api.plugin import Plugin
 from Splonecli.Api.remotefunction import RemoteFunction
