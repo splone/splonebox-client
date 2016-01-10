@@ -1,8 +1,6 @@
 import logging
 from queue import Queue
-
 import sys
-
 from Splonecli.Rpc.message import MResponse, MRequest, InvalidMessageError
 from Splonecli.Rpc.msgpackrpc import MsgpackRpc
 from Splonecli.Api.apicall import ApiRegister, ApiRun
@@ -12,6 +10,14 @@ from Splonecli.Api.remotefunction import RemoteFunction
 class Plugin:
 	def __init__(self, api_key: str, name: str, desc: str, author: str,
 				 licence: str, debug=False):
+		"""
+		:param api_key: Api key (make sure it was added to the core)
+		:param name: Name of the plugin
+		:param desc: Description of the plugin
+		:param author: Author of the plugin
+		:param licence: License of the plugin
+		:param debug: If true more information will be printed to the output
+		"""
 
 		# register stop function
 		RemoteFunction.remote_functions["stop"] = (
@@ -39,7 +45,6 @@ class Plugin:
 
 		:param name: (ip/web address)
 		:param port: Host's Port
-		:return:
 		:raises: :ConnectionRefusedError if socket is unable to connect
 		:raises: socket.gaierror if Host unknown
 		:raises: :ConnectionError if hostname or port are invalid types
@@ -49,9 +54,10 @@ class Plugin:
 	def register(self):
 		"""
 		Registers the Plugin and all annotated functions @ the core.
-		-> Make sure you are connected
 
-		:return: None
+		:raises :InvalidApiCallError if something is wrong with the metadata
+		or functions
+		:raises :BrokenPipeError if something is wrong with the connection
 		"""
 
 		# Register functions remotely
@@ -63,13 +69,25 @@ class Plugin:
 
 		reg = ApiRegister(self._metadata, functions)
 
-		self._rpc.send(reg.msg)  # send the msgpack-rpc formatted message
+		# send the msgpack-rpc formatted message
+		self._rpc.send(reg.msg, self._register_response_handler)
+
+	def _register_response_handler(self, response: MResponse):
+		"""
+		Handles the register response
+		:param response: Response Message containing result/error
+		"""
+		if response.error is not None:
+			logging.warning(response.error[1].decode('ascii'))
+			logging.warning("Stopping the plugin")
+			self._stop()
+
 
 	def _handle_response(self, result: MResponse):
 		"""
 		Default function for handling responses (Synchronous calls!)
+
 		:param result: Response Message containing result/error
-		:return:
 		"""
 		self._result_queue.put(result)
 
@@ -95,33 +113,33 @@ class Plugin:
 		"""
 		Waits until the connection is closed
 		"""
-		self._rpc.wait()
+		self._rpc.listen()
 
 	def _stop(self, *args, **kwargs):
+		"""
+		Remote function to stop the plugin
+		"""
 		self._rpc.disconnect()
 
 	def _handle_run(self, msg: MRequest):
 		"""
 		Callback to handle run requests
 		:param msg: Message containing run Request (MRequest)
-		:return:
 		"""
-
-		# errors are handled by MsgpackRpc._message_callback
 
 		response = MResponse(msg.get_msgid())
 
 		try:
 			call = ApiRun.from_msgpack_request(msg)
 		except InvalidMessageError:
-			response.error= [400, "Received Message is not a valid run call"]
+			response.error = [400, "Received Message is not a valid run call"]
 			self._rpc.send(response)
 			return
 
 		try:
 			fun = RemoteFunction.remote_functions[call.get_method_name()][0]
 		except KeyError:
-			response.error =[404, "Function does not exist!"]
+			response.error = [404, "Function does not exist!"]
 			self._rpc.send(response)
 			return
 
@@ -135,6 +153,7 @@ class Plugin:
 			self._rpc.send(response)
 			# TODO: More percise response
 			return
+
 
 class PluginError(Exception):
 	def __init__(self, value: str):
