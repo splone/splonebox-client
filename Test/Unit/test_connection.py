@@ -29,7 +29,7 @@ class ConnectionTest(unittest.TestCase):
         listen_mock = mocks.Mock()
         con.listen = listen_mock
         con.connect("127.0.0.1", 6666, some_callback, listen=True)
-        listen_mock.assert_called_with(some_callback)
+        listen_mock.assert_called_with(some_callback, new_thread=True)
 
         mock_socket.connect.side_effect = ConnectionRefusedError
         with self.assertRaises(ConnectionRefusedError):
