@@ -78,7 +78,7 @@ class Plugin:
 		:param response: Response Message containing result/error
 		"""
 		if response.error is not None:
-			logging.warning(response.error[1].decode('ascii'))
+			logging.warning("Register call failed: " + response.error[1].decode('ascii'))
 			logging.warning("Stopping the plugin")
 			self._stop()
 
