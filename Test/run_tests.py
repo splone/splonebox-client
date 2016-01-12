@@ -3,7 +3,7 @@ import logging
 import unittest
 
 from Test.Functional import test_remote_calls, test_local_call
-from Test.Unit import test_connection, test_dispatcher, test_message, \
+from Test.Unit import test_connection, test_message, \
     test_msgpackrpc, test_plugin, test_remotefunction
 from Test.Unit import test_apicall
 
