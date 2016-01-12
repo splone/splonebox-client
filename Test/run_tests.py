@@ -20,7 +20,6 @@ test_plugin.collect_tests(suite)
 test_message.collect_tests(suite)
 test_msgpackrpc.collect_tests(suite)
 test_connection.collect_tests(suite)
-test_dispatcher.collect_tests(suite)
 # Functional
 test_remote_calls.collect_tests(suite)
 test_local_call.collect_tests(suite)
