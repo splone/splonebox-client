@@ -3,7 +3,6 @@ import logging
 import msgpack
 
 from Splonecli.Rpc.connection import Connection
-from Splonecli.Rpc.dispatcher import Dispatcher, DispatcherError
 from Splonecli.Rpc.message import Message, InvalidMessageError, MResponse, \
 	MNotify
 
@@ -11,7 +10,7 @@ from Splonecli.Rpc.message import Message, InvalidMessageError, MResponse, \
 class MsgpackRpc:
 	def __init__(self):
 		self._connection = Connection()
-		self._dispatcher = Dispatcher()
+		self._dispatcher = {}
 		self._response_callbacks = {}
 		self._unpacker = msgpack.Unpacker()
 		pass
@@ -69,13 +68,13 @@ class MsgpackRpc:
 				logging.info('Received this message: \n' + msg.__str__())
 				if msg.get_type() == 0:
 					# type == 0  => Message is request
-					self._dispatcher.dispatch(msg)
+					self._dispatcher[msg.function](msg)
 				elif msg.get_type() == 1:
 					self._handle_response(msg)
 				elif msg.get_type() == 2:
 					self._handle_notify(msg)
 
-			except (InvalidMessageError, DispatcherError) as e:
+			except InvalidMessageError as e:
 				logging.info(e.name)
 				logging.info(
 					"\n Unable to handle Message\n")
@@ -97,7 +96,7 @@ class MsgpackRpc:
 		:param foo: A function reference
 		:raises DispatcherError
 		"""
-		self._dispatcher.register_function(foo, name)
+		self._dispatcher[name] = foo
 
 	def disconnect(self):
 		"""

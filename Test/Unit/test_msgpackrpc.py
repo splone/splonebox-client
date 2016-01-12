@@ -44,10 +44,8 @@ class MsgpackRpcTest(unittest.TestCase):
 	# noinspection PyProtectedMember
 	def test_message_callback(self):
 		rpc = MsgpackRpc()
-		dispatch = mocks.rpc_dispatch(rpc)
-		handle_response = mocks.rpc_handle_response(rpc)
-		handle_notify = mocks.rpc_handle_notify(rpc)
 
+		dispatch = mocks.rpc_dispatch(rpc, "run")
 		m_req = MRequest()
 		m_req.function = "run"
 		m_req.arguments = []
@@ -55,11 +53,13 @@ class MsgpackRpcTest(unittest.TestCase):
 		rpc._message_callback(m_req.pack())
 		dispatch.assert_called_once_with(m_req)
 
+		handle_response = mocks.rpc_handle_response(rpc)
 		m_res = MResponse(1)
 		m_res.result = []
 		rpc._message_callback(m_res.pack())
 		handle_response.assert_called_once_with(m_res)
 
+		handle_notify = mocks.rpc_handle_notify(rpc)
 		m_not = MNotify()
 		m_not.body = []
 		rpc._message_callback(m_not.pack())
