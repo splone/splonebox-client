@@ -1,6 +1,5 @@
 import unittest
 from unittest.mock import Mock
-
 import Test.mocks as mocks
 from Splonecli.Api.plugin import Plugin
 from Splonecli.Rpc.message import MResponse, MRequest
@@ -20,7 +19,7 @@ class PluginTest(unittest.TestCase):
 		plug = Plugin("abc", "foo", "bar", "bob", "alice", debug=False)
 
 		rpc_send_mock = mocks.plug_rpc_send(plug)
-		plug.register()
+		plug.register(blocking=False)
 		call_args = rpc_send_mock.call_args[0][0]
 
 		self.assertEqual(call_args._type, 0)  # 0 indicates message request
@@ -52,7 +51,8 @@ class PluginTest(unittest.TestCase):
 		plug = Plugin("abc", "foo", "bar", "bob", "alice")
 
 		rpc_send_mock = mocks.plug_rpc_send(plug)
-		plug.run("apikey", "foo", [1, "foo"], has_result=False)
+
+		plug.run("apikey", "foo", [1, "foo"])
 		call_args = rpc_send_mock.call_args[0][0]
 
 		self.assertEqual(call_args._type, 0)  # 0 indicates message request
@@ -61,13 +61,7 @@ class PluginTest(unittest.TestCase):
 		self.assertEqual(call_args.arguments[0][0], "apikey")
 		self.assertEqual(call_args.arguments[1], "foo")
 		self.assertEqual(call_args.arguments[2], [1, "foo"])
-
-		# Just a simple check for the result queue
-		plug._result_queue.put(["some", 1, 0.2, "result"])
-		self.assertTrue(plug._result_queue.full())
-		res = plug.run("apikey", "foo", [1, "foo"], has_result=True)
-		self.assertEqual(res, ["some", 1, 0.2, "result"])
-		self.assertTrue(plug._result_queue.empty())
+		pass
 
 	def test_handle_run(self):
 		plug = Plugin("abc", "foo", "bar", "bob", "alice")
@@ -93,7 +87,30 @@ class PluginTest(unittest.TestCase):
 
 	def test_handle_response(self):
 		plug = Plugin("abc", "foo", "bar", "bob", "alice")
+		send_mock = mocks.plug_rpc_send(plug)
 
-		self.assertTrue(plug._result_queue.empty())
-		plug._handle_response(MResponse(0))
-		self.assertTrue(plug._result_queue.full())
+		result = plug.register(blocking=False)
+		register_msg = send_mock.call_args[0][0]
+		response = MResponse(register_msg._msgid)
+		response.result = []
+		self.assertEqual(result.get_status(), 0)
+		plug._handle_response(response)
+		self.assertEqual(result.get_status(), 2)
+
+		result = plug.run("key", "foo", [])
+		run_msg = send_mock.call_args[0][0]
+		response = MResponse(run_msg._msgid)
+		response.result = [123]
+		self.assertEqual(result.get_status(), 0)
+		plug._handle_response(response)
+		self.assertEqual(result.get_status(), 1)
+		self.assertEqual(result.get_id(), 123)
+
+		result_request = MRequest()
+		result_request.function = "result"
+		result_request.arguments =[[123], ["Some Result!"]]
+		plug._handle_result(result_request)
+
+		self.assertEqual(result.get_result()[0], 2)
+		self.assertEqual(result.get_result()[1], ["Some Result!"])
+

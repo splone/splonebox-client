@@ -2,8 +2,9 @@ import ctypes
 import socket
 import unittest
 from unittest.mock import Mock
-
 import msgpack
+
+from Rpc.message import MResponse
 from Splonecli.Api.plugin import Plugin
 from Splonecli.Api.remotefunction import RemoteFunction
 from Test import mocks
@@ -26,7 +27,7 @@ class RemoteCallTest(unittest.TestCase):
 		plug = Plugin("abc", "foo", "bar", "bob", "alice", debug=False)
 		mock_sock = mocks.connection_socket(plug._rpc._connection)
 
-		plug.register()
+		plug.register(blocking=False)
 		outgoing = msgpack.unpackb(mock_sock.send.call_args[0][0])
 
 		self.assertEqual(0, outgoing[0])
@@ -43,7 +44,7 @@ class RemoteCallTest(unittest.TestCase):
 		plug = Plugin("abc", "foo", "bar", "bob", "alice", debug=False)
 		mock_sock = mocks.connection_socket(plug._rpc._connection)
 
-		plug.run("api key", "function", [1, "hi", 42.317, b'hi'], has_result=False)
+		plug.run("api key", "function", [1, "hi", 42.317, b'hi'])
 		outgoing = msgpack.unpackb(mock_sock.send.call_args[0][0])
 
 		self.assertEqual(0, outgoing[0])
@@ -59,11 +60,11 @@ class RemoteCallTest(unittest.TestCase):
 		mock_sock = mocks.connection_socket(plug._rpc._connection)
 		plug._rpc._connection.listen = Mock()
 
-		plug.connect("www.google.de", 1234)
+		plug.connect("localhost", 1234)
 		ip = mock_sock.connect.call_args[0][0][0]
 		port = mock_sock.connect.call_args[0][0][1]
 
-		self.assertEqual(ip, socket.gethostbyname("www.google.de"))
+		self.assertEqual(ip, socket.gethostbyname("localhost"))
 		self.assertEqual(port, 1234)
 
 	pass

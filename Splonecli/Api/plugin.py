@@ -5,11 +5,17 @@ from Splonecli.Rpc.message import MResponse, MRequest, InvalidMessageError
 from Splonecli.Rpc.msgpackrpc import MsgpackRpc
 from Splonecli.Api.apicall import ApiRegister, ApiRun
 from Splonecli.Api.remotefunction import RemoteFunction
+from Splonecli.Api.result import RunResult, RegisterResult
 
 
 class Plugin:
-	def __init__(self, api_key: str, name: str, desc: str, author: str,
-				 licence: str, debug=False):
+	def __init__(self,
+				 api_key: str,
+				 name: str,
+				 desc: str,
+				 author: str,
+				 licence: str,
+				 debug=False):
 		"""
 		:param api_key: Api key (make sure it was added to the core)
 		:param name: Name of the plugin
@@ -29,9 +35,12 @@ class Plugin:
 		self._rpc = MsgpackRpc()
 		# register run function @ rpc dispatcher
 		self._rpc.register_function(self._handle_run, "run")
+		self._rpc.register_function(self._handle_result, "result")
 
-		# initialize queue for synchronous calls
-		self._result_queue = Queue(maxsize=1)  # TODO: Is there a better way?
+		# pending_responses
+		self._responses_pending = {int: RunResult()}  # msgid: result
+		# pending_results
+		self._results_pending = {int: RunResult()}  # call_id
 
 		# set logging level
 		if debug:
@@ -51,7 +60,7 @@ class Plugin:
 		"""
 		self._rpc.connect(name, port)
 
-	def register(self):
+	def register(self, blocking=True):
 		"""
 		Registers the Plugin and all annotated functions @ the core.
 
@@ -70,28 +79,34 @@ class Plugin:
 		reg = ApiRegister(self._metadata, functions)
 
 		# send the msgpack-rpc formatted message
-		self._rpc.send(reg.msg, self._register_response_handler)
+		self._rpc.send(reg.msg, self._handle_response)
+		result = RegisterResult()
+		self._responses_pending[reg.msg.get_msgid()] = result
+		if blocking:
+			result.await()
 
-	def _register_response_handler(self, response: MResponse):
-		"""
-		Handles the register response
-		:param response: Response Message containing result/error
-		"""
-		if response.error is not None:
-			logging.warning("Register call failed: " + response.error[1].decode('ascii'))
-			logging.warning("Stopping the plugin")
-			self._stop()
+		return result
 
-
-	def _handle_response(self, result: MResponse):
+	def _handle_response(self, response: MResponse):
 		"""
 		Default function for handling responses (Synchronous calls!)
 
 		:param result: Response Message containing result/error
 		"""
-		self._result_queue.put(result)
+		result = self._responses_pending[response.get_msgid()]
+		if response.error is not None:
+			result.set_error([response.error[0], response.error[1].decode('ascii')])
+		else:
+			if result.get_type() == 0:
+				# We received a response for a register call
+				# No actual result expected
+				result.success()
+			elif result.get_type() == 1:
+				# we received a response for a run call
+				result.set_id(response.result[0])  # set call id
+				self._results_pending[result.get_id()] = result
 
-	def run(self, api_key: str, function: str, arguments: [], has_result=True):
+	def run(self, api_key: str, function: str, arguments: []):
 		"""
 		Run a remote function and synchronously wait for a result
 
@@ -100,14 +115,14 @@ class Plugin:
 		:param function: name of the function
 		:param arguments: function arguments | empty list or None for no args
 		:return: result (This is currently a synchronous call!)
+		:raises :RemoteRunError if run call failed
 		"""
-		if has_result:
-			self._rpc.send(ApiRun(api_key, function, arguments).msg,
-						   self._handle_response)
-			# Okay, remember: This is a synchronous call!
-			return self._result_queue.get()
-		else:
-			self._rpc.send(ApiRun(api_key, function, arguments).msg, None)
+		run = ApiRun(api_key, function, arguments)
+		self._rpc.send(run.msg, self._handle_response)
+
+		result = RunResult()
+		self._responses_pending[run.msg.get_msgid()] = result
+		return result
 
 	def listen(self):
 		"""
@@ -151,8 +166,12 @@ class Plugin:
 		except Exception:
 			response.error = [420, "Function Execution failed"]
 			self._rpc.send(response)
-			# TODO: More percise response
 			return
+
+	def _handle_result(self, msg: MRequest):
+		# This is not implemented at the server
+		# TODO: Implement ApiCall ApiResult!
+		self._results_pending[msg.arguments[0][0]].set_result(msg.arguments[1])
 
 
 class PluginError(Exception):
@@ -161,3 +180,12 @@ class PluginError(Exception):
 
 	def __str__(self) -> str:
 		return self.value
+
+
+class RemoteError(Exception):
+	def __init__(self, errno: int, name: str):
+		self.errno = errno
+		self.name = name
+
+	def __str__(self) -> str:
+		return "Error " + self.errno + ": " + self.name
