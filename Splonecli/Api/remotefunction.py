@@ -6,7 +6,9 @@ class RemoteFunction():
 	"""
 	Annotate Remote Functions with @RemoteFunction and import Plugin.RemoteFunction
 
-	Make sure,  that you specify the types for your parameters!
+
+	Make sure,  that you specify the types for your parameters:
+
 
 	Valid choices:
 	 ctypes.c_bool, ctypes.c_byte, ctypes.c_uint64, ctypes.c_int64, ctypes.c_double, ctypes.c_char_p
