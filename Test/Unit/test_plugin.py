@@ -111,6 +111,6 @@ class PluginTest(unittest.TestCase):
 		result_request.arguments =[[123], ["Some Result!"]]
 		plug._handle_result(result_request)
 
-		self.assertEqual(result.get_result()[0], 2)
-		self.assertEqual(result.get_result()[1], ["Some Result!"])
+		self.assertEqual(result.get_status(), 2)
+		self.assertEqual(result.get_result(), ["Some Result!"])
 

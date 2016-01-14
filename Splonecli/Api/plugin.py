@@ -1,6 +1,5 @@
 import logging
-from queue import Queue
-import sys
+
 from Splonecli.Rpc.message import MResponse, MRequest, InvalidMessageError
 from Splonecli.Rpc.msgpackrpc import MsgpackRpc
 from Splonecli.Api.apicall import ApiRegister, ApiRun
@@ -67,6 +66,8 @@ class Plugin:
 		:raises :InvalidApiCallError if something is wrong with the metadata
 		or functions
 		:raises :BrokenPipeError if something is wrong with the connection
+		:raises :RemoteError if the register call was invalid
+		:returns :RegisterResult if non blocking
 		"""
 
 		# Register functions remotely
@@ -84,8 +85,8 @@ class Plugin:
 		self._responses_pending[reg.msg.get_msgid()] = result
 		if blocking:
 			result.await()
-
-		return result
+		else:
+			return result
 
 	def _handle_response(self, response: MResponse):
 		"""
@@ -114,7 +115,7 @@ class Plugin:
 		:param api_key: Target? api_key
 		:param function: name of the function
 		:param arguments: function arguments | empty list or None for no args
-		:return: result (This is currently a synchronous call!)
+		:return: :RunResult
 		:raises :RemoteRunError if run call failed
 		"""
 		run = ApiRun(api_key, function, arguments)
@@ -143,6 +144,7 @@ class Plugin:
 		"""
 
 		response = MResponse(msg.get_msgid())
+		# TODO: Verify call id!
 
 		try:
 			call = ApiRun.from_msgpack_request(msg)
@@ -159,7 +161,16 @@ class Plugin:
 			return
 
 		try:
-			fun(call.get_method_args())
+			# Send execution validation
+			response.result = msg.arguments[0]
+			self._rpc.send(response)
+			result = fun(call.get_method_args())
+			# Send Result
+			msg_result = MRequest()
+			msg_result.function = "result"
+			msg_result.arguments = [msg.arguments[0], [result]]
+			self._rpc.send(msg_result)
+
 		except TypeError:
 			response.error = [400, "Invalid Argument(s)"]
 			self._rpc.send(response)
@@ -167,6 +178,8 @@ class Plugin:
 			response.error = [420, "Function Execution failed"]
 			self._rpc.send(response)
 			return
+
+
 
 	def _handle_result(self, msg: MRequest):
 		# This is not implemented at the server
@@ -182,10 +195,3 @@ class PluginError(Exception):
 		return self.value
 
 
-class RemoteError(Exception):
-	def __init__(self, errno: int, name: str):
-		self.errno = errno
-		self.name = name
-
-	def __str__(self) -> str:
-		return "Error " + self.errno + ": " + self.name
