@@ -4,7 +4,6 @@ import unittest
 from unittest.mock import Mock
 import msgpack
 
-from Rpc.message import MResponse
 from Splonecli.Api.plugin import Plugin
 from Splonecli.Api.remotefunction import RemoteFunction
 from Test import mocks

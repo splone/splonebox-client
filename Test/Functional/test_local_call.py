@@ -29,6 +29,7 @@ class LocalCall(unittest.TestCase):
 		RemoteFunction(foo)
 
 		plug = Plugin("abc", "foo", "bar", "bob", "alice", debug=False)
+		mocks.plug_rpc_send(plug) # ignore responses here
 
 		# start fake listening
 		socket_recv_q = mocks.connection_socket_fake_recv(plug._rpc._connection)
