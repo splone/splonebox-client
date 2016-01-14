@@ -1,10 +1,9 @@
 import logging
-
 from Splonecli.Rpc.message import MResponse, MRequest, InvalidMessageError
 from Splonecli.Rpc.msgpackrpc import MsgpackRpc
 from Splonecli.Api.apicall import ApiRegister, ApiRun
 from Splonecli.Api.remotefunction import RemoteFunction
-from Splonecli.Api.result import RunResult, RegisterResult
+from Splonecli.Api.result import RunResult, Result, RegisterResult
 
 
 class Plugin:
@@ -37,9 +36,9 @@ class Plugin:
 		self._rpc.register_function(self._handle_result, "result")
 
 		# pending_responses
-		self._responses_pending = {int: RunResult()}  # msgid: result
+		self._responses_pending = {int: Result()}  # msgid: result
 		# pending_results
-		self._results_pending = {int: RunResult()}  # call_id
+		self._results_pending = {int: Result()}  # call_id
 
 		# set logging level
 		if debug:
@@ -96,7 +95,8 @@ class Plugin:
 		"""
 		result = self._responses_pending[response.get_msgid()]
 		if response.error is not None:
-			result.set_error([response.error[0], response.error[1].decode('ascii')])
+			result.set_error(
+				[response.error[0], response.error[1].decode('ascii')])
 		else:
 			if result.get_type() == 0:
 				# We received a response for a register call
@@ -179,8 +179,6 @@ class Plugin:
 			self._rpc.send(response)
 			return
 
-
-
 	def _handle_result(self, msg: MRequest):
 		# This is not implemented at the server
 		# TODO: Implement ApiCall ApiResult!
@@ -193,5 +191,3 @@ class PluginError(Exception):
 
 	def __str__(self) -> str:
 		return self.value
-
-
