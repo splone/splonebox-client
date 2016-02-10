@@ -17,66 +17,66 @@ def collect_tests(suite: unittest.TestSuite):
 class MessageTest(unittest.TestCase):
 	def test_unpack(self):
 		msg_request = [0, 1, b'run', [b'hi']]
-		unpacked = Message.unpack(msg_request)
+		unpacked = Message.from_unpacked(msg_request)
 		self.assertEqual(unpacked._type, 0)
 		self.assertEqual(unpacked.get_msgid(), 1)
 		self.assertEqual(unpacked.arguments, [b'hi'])
 		self.assertEqual(unpacked.function, "run")
 
 		msg_response = [1, 1, ['err'], ['res']]
-		unpacked = Message.unpack(msg_response)
+		unpacked = Message.from_unpacked(msg_response)
 		self.assertEqual(unpacked._type, 1)
 		self.assertEqual(unpacked.get_msgid(), 1)
 		self.assertEqual(unpacked.error, ['err'])
 		self.assertEqual(unpacked.result, ['res'])
 
 		msg_notify = [2, 1, ['hi']]
-		unpacked = Message.unpack(msg_notify)
+		unpacked = Message.from_unpacked(msg_notify)
 		self.assertEqual(unpacked._type, 2)
 		self.assertEqual(unpacked.get_msgid(), 1)
 		self.assertEqual(unpacked.body, ['hi'])
 
 		with self.assertRaises(InvalidMessageError):
-			Message.unpack([])
+			Message.from_unpacked([])
 
 		with self.assertRaises(InvalidMessageError):
-			Message.unpack([1, 2])
+			Message.from_unpacked([1, 2])
 
 		with self.assertRaises(InvalidMessageError):
-			Message.unpack([1, 2, 3, 4, 5])
+			Message.from_unpacked([1, 2, 3, 4, 5])
 
 		with self.assertRaises(InvalidMessageError):
-			Message.unpack(["", 1, ['err'], ['res']])
+			Message.from_unpacked(["", 1, ['err'], ['res']])
 
 		with self.assertRaises(InvalidMessageError):
-			Message.unpack([5, 1, ['err'], ['res']])
+			Message.from_unpacked([5, 1, ['err'], ['res']])
 
 		with self.assertRaises(InvalidMessageError):
-			Message.unpack([1, "", ['err'], ['res']])
+			Message.from_unpacked([1, "", ['err'], ['res']])
 
 		with self.assertRaises(InvalidMessageError):
-			Message.unpack([1, -1, ['err'], ['res']])
+			Message.from_unpacked([1, -1, ['err'], ['res']])
 
 		with self.assertRaises(InvalidMessageError):
-			Message.unpack([1, pow(2, 32) + 1, ['err'], ['res']])
+			Message.from_unpacked([1, pow(2, 32) + 1, ['err'], ['res']])
 
 		with self.assertRaises(InvalidMessageError):
-			Message.unpack([0, 1, "", [""]])
+			Message.from_unpacked([0, 1, "", [""]])
 
 		with self.assertRaises(InvalidMessageError):
-			Message.unpack([0, 1, b'', ""])
+			Message.from_unpacked([0, 1, b'', ""])
 
 		with self.assertRaises(InvalidMessageError):
-			Message.unpack([1, 1, None, None])
+			Message.from_unpacked([1, 1, None, None])
 
 		with self.assertRaises(InvalidMessageError):
-			Message.unpack([1, 1, "", []])
+			Message.from_unpacked([1, 1, "", []])
 
 		with self.assertRaises(InvalidMessageError):
-			Message.unpack([1, 1, [], ""])
+			Message.from_unpacked([1, 1, [], ""])
 
 		with self.assertRaises(InvalidMessageError):
-			Message.unpack([1, 1, ""])
+			Message.from_unpacked([1, 1, ""])
 
 	def test_MRequest(self):
 		msg = MRequest()

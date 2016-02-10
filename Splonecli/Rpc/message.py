@@ -37,7 +37,7 @@ class Message:
 		pass
 
 	@staticmethod
-	def unpack(unpacked):
+	def from_unpacked(unpacked):
 		"""
 		Returns a Request, MResponse or MNotify depending on the type of
 		the unpacked message

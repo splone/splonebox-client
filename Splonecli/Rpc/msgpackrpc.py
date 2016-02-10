@@ -56,7 +56,7 @@ class MsgpackRpc:
 		messages = []
 		for unpacked in self._unpacker:
 			try:
-				messages.append(Message.unpack(unpacked))
+				messages.append(Message.from_unpacked(unpacked))
 			except InvalidMessageError:
 				m = MResponse(0)
 				m.error = [400, "Invalid Message Format"]
