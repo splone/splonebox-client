@@ -8,14 +8,14 @@ from Splonecli.Api.result import RunResult, Result, RegisterResult
 
 class Plugin:
 	def __init__(self,
-				 api_key: str,
+				 plugin_id: str,
 				 name: str,
 				 desc: str,
 				 author: str,
 				 licence: str,
 				 debug=False):
 		"""
-		:param api_key: Api key (make sure it was added to the core)
+		:param plugin_id: Api key (make sure it was added to the core)
 		:param name: Name of the plugin
 		:param desc: Description of the plugin
 		:param author: Author of the plugin
@@ -28,7 +28,7 @@ class Plugin:
 			self._stop, ["stop", "terminates the plugin", []])
 
 		# [<api key>, <name>, <description>, <author>, <license>]
-		self._metadata = [api_key, name, desc, author, licence]
+		self._metadata = [plugin_id, name, desc, author, licence]
 
 		self._rpc = MsgpackRpc()
 		# register run function @ rpc dispatcher
@@ -95,34 +95,33 @@ class Plugin:
 		"""
 		result = self._responses_pending[response.get_msgid()]
 		if response.error is not None:
-			result.set_error(
-				[response.error[0], response.error[1].decode('ascii')])
+			result.set_error([response.error[0], response.error[1].decode(
+				'ascii')])
 		else:
 			if result.get_type() == 0:
 				# We received a response for a register call
-				# No actual result expected
 				result.success()
 			elif result.get_type() == 1:
 				# we received a response for a run call
-				result.set_id(response.result[0])  # set call id
+				result.set_id(response.result[0])
 				self._results_pending[result.get_id()] = result
 
-	def run(self, api_key: str, function: str, arguments: []):
+	def run(self, plugin_id: str, function: str, arguments: []):
 		"""
 		Run a remote function and synchronously wait for a result
 
 		:param has_result: Does the called function have a result?
-		:param api_key: Target? api_key
+		:param plugin_id: Targets plugin_id
 		:param function: name of the function
 		:param arguments: function arguments | empty list or None for no args
 		:return: :RunResult
 		:raises :RemoteRunError if run call failed
 		"""
-		run = ApiRun(api_key, function, arguments)
-		self._rpc.send(run.msg, self._handle_response)
+		run_call = ApiRun(plugin_id, function, arguments)
+		self._rpc.send(run_call.msg, self._handle_response)
 
 		result = RunResult()
-		self._responses_pending[run.msg.get_msgid()] = result
+		self._responses_pending[run_call.msg.get_msgid()] = result
 		return result
 
 	def listen(self):
@@ -162,13 +161,13 @@ class Plugin:
 
 		try:
 			# Send execution validation
-			response.result = msg.arguments[0]
+			response.result = [msg.arguments[0][1]]
 			self._rpc.send(response)
 			result = fun(call.get_method_args())
 			# Send Result
 			msg_result = MRequest()
 			msg_result.function = "result"
-			msg_result.arguments = [msg.arguments[0], [result]]
+			msg_result.arguments = [[msg.arguments[0][1]], [result]]
 			self._rpc.send(msg_result)
 
 		except TypeError:

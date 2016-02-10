@@ -92,7 +92,8 @@ class ApiRun(ApiCall):
   		method, # "run" for obvious reasons
   		[
   			[                          # Metadata
-  				<api key>
+  				<(target) plugin id>,
+  				call_id
   			],
   			<function name>,
   			[                          # Functions
@@ -120,11 +121,14 @@ class ApiRun(ApiCall):
             raise InvalidMessageError("Message body is faulty")
 
         if not isinstance(msg.arguments[0],
-                          list) or len(msg.arguments[0]) != 1:
+                          list) or len(msg.arguments[0]) != 2:
             raise InvalidMessageError("First element of body has to be a list")
 
-        if not isinstance(msg.arguments[0][0], bytes):
-            raise InvalidMessageError("ApiKey is not bytes")
+        if msg.arguments[0][0] is not None:
+            raise InvalidMessageError("Plugin identifier set on incomming msg")
+
+        if not isinstance(msg.arguments[0][1], int):
+            raise InvalidMessageError("Call_id is invaild")
 
         if not isinstance(msg.arguments[1], bytes):
             raise InvalidMessageError("Function name is not bytes")
@@ -133,26 +137,28 @@ class ApiRun(ApiCall):
             raise InvalidMessageError("Third element of body has to be a list")
 
         msg = copy.deepcopy(msg)
-        msg.arguments[0][0] = msg.arguments[0][0].decode('ascii')
         msg.arguments[1] = msg.arguments[1].decode('ascii')
 
         for arg in msg.arguments[2]:
             if not isinstance(arg, ApiRun._valid_types):
                 raise InvalidMessageError("Invalid Argument type!")
 
-        return ApiRun(msg.arguments[0][0], msg.arguments[1], msg.arguments[2])
+        call = ApiRun("", msg.arguments[1], msg.arguments[2])
+        call.msg._msgid = msg._msgid # make sure we keep the right msg_id
 
-    def __init__(self, api_key: str, function_name: str, args: []):
+        return call
+
+    def __init__(self, plugin_id: str, function_name: str, args: []):
         """
-        :param api_key: api_key of the plugin to be called
+        :param plugin_id: api_key of the plugin to be called
         :param function_name: function wto be called
         :param args: list of arguments for the remote function
         :raises :InvalidApiCallError if the Information is invalid
         """
         super().__init__()
 
-        if not isinstance(api_key, str):
-            raise InvalidApiCallError("api key has to be a string")
+        if not isinstance(plugin_id, str):
+            raise InvalidApiCallError("plugin identifier has to be a string")
 
         if not isinstance(function_name, str):
             raise InvalidApiCallError("function name has to be a string")
@@ -166,12 +172,12 @@ class ApiRun(ApiCall):
 
         self.msg = MRequest()
         self.msg.function = "run"
-        self.msg.arguments = [[api_key], function_name, args]
+        self.msg.arguments = [[plugin_id, None], function_name, args]
 
     def get_method_args(self):
         return self.msg.arguments[2]
 
-    def get_api_key(self) -> str:
+    def get_plugin_id(self) -> str:
         return self.msg.arguments[0][0]
 
     def get_method_name(self) -> str:
