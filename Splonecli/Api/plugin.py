@@ -93,14 +93,17 @@ class Plugin:
 
 		:param result: Response Message containing result/error
 		"""
-		result = self._responses_pending[response.get_msgid()]
+		result = self._responses_pending.pop(response.get_msgid())
 		if response.error is not None:
 			result.set_error([response.error[0], response.error[1].decode(
 				'ascii')])
 		else:
 			if result.get_type() == 0:
 				# We received a response for a register call
-				result.success()
+				if response.error is None and response.result == []:
+					result.success()
+				else:
+					result.set_error([400, "Received invalid Response"])
 			elif result.get_type() == 1:
 				# we received a response for a run call
 				result.set_id(response.result[0])

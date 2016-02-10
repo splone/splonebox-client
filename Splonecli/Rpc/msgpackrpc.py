@@ -117,8 +117,7 @@ class MsgpackRpc:
 		:return:
 		"""
 		try:
-			self._response_callbacks[msg.get_msgid()](msg)
-			self._response_callbacks.pop(msg.get_msgid())
+			self._response_callbacks.pop(msg.get_msgid())(msg)
 		except Exception:
 			if msg.error is not None:
 				logging.warning(
