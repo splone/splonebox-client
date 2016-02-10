@@ -163,6 +163,7 @@ class Plugin:
 			# Send execution validation
 			response.result = [msg.arguments[0][1]]
 			self._rpc.send(response)
+			# TODO: start new thread for call. Implement stop API call
 			result = fun(call.get_method_args())
 			# Send Result
 			msg_result = MRequest()
