@@ -41,14 +41,7 @@ class LocalCall(unittest.TestCase):
 		start_new_thread(plug._rpc._connection._listen,
 						 (plug._rpc._message_callback,))
 
-		# catching responses
-		# basically a mock with blocking capability
-		call_queue = Queue()
-
-		def fake_send(msg: Message, response_callback=None):
-			call_queue.put(msg, timeout=1)
-
-		plug._rpc.send = fake_send
+		mock_send = mocks.rpc_send(plug._rpc)
 
 		# pretend that we received a message
 		call = ApiRun("id", "foo", [True, b'hi', 5, -82, 7.23, "hi", 64])
@@ -56,19 +49,21 @@ class LocalCall(unittest.TestCase):
 		call.msg.arguments[0][1] = 123  # set some call id
 		socket_recv_q.put(call.msg.pack())
 
-		# give the handling some time
+		# wait for execution to start
 		sync.acquire(timeout=1)
+		# wait for execution to finish
+		plug._active_threads[123].join()
 		mock_foo.assert_called_with(True, b'hi', 5, -82, 7.23, "hi", 64)
 
 		# check response
-		msg = call_queue.get(timeout=1)
+		msg = mock_send.call_args_list[0][0][0]
 		self.assertEqual(msg.get_type(), 1)
 		self.assertEqual(msg.get_msgid(), call.msg.get_msgid())
 		self.assertEqual(msg.error, None)
 		self.assertEqual(msg.result[0], 123)
 
 		# check result
-		msg = call_queue.get(timeout=1)
+		msg = mock_send.call_args_list[1][0][0]
 		self.assertEqual(msg.get_type(), 0)
 		self.assertEqual(msg.function, "result")
 		self.assertEqual(msg.arguments[0][0], 123)

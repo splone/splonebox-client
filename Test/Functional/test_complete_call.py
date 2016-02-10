@@ -1,5 +1,6 @@
 import ctypes
 import unittest
+from threading import Lock
 
 import msgpack
 
@@ -34,6 +35,9 @@ class CompleteCall(unittest.TestCase):
 		msg.arguments[0][0] = None  # remove plugin_id
 		msg.arguments[0][1] = 123  # set call id
 		plug._rpc._message_callback(msg.pack())
+
+		# wait for execution to finish
+		plug._active_threads[123].join()
 
 		# receive response
 		data = mock_sock.send.call_args_list[1][0][0]

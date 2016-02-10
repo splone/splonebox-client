@@ -1,5 +1,7 @@
 import unittest
 from unittest.mock import Mock
+from threading import Lock
+
 import Test.mocks as mocks
 from Splonecli.Api.plugin import Plugin
 from Splonecli.Rpc.message import MResponse, MRequest
@@ -68,18 +70,20 @@ class PluginTest(unittest.TestCase):
 		send = mocks.plug_rpc_send(plug) # catch results/responses
 
 		mock = Mock()
-		RemoteFunction.remote_functions["mock"] = (mock, ["mock", "", []])
+
+		RemoteFunction.remote_functions["foo"] = (mock, ["foo", "", []])
 
 		msg = MRequest()
 		msg.function = "run"
-		msg.arguments = [[None, 123], b'mock', [1, 1.1, "hi"]]
+		msg.arguments = [[None, 123], b'foo', [1, 1.1, "hi"]]
 
 		plug._handle_run(msg)
+		plug._active_threads[123].join()
 		mock.assert_called_with([1, 1.1, "hi"])
 		# request was valid -> 1x response + 1x result)
 		self.assertEqual(send.call_count, 2)
 
-		msg.arguments = [[None,123], b'foo', [1, 1.1, "hi"]]
+		msg.arguments = [[None,123], b'mock', [1, 1.1, "hi"]]
 		plug._handle_run(msg)
 		# request was invalid -> 1x error response )
 		self.assertEqual(send.call_count, 3)

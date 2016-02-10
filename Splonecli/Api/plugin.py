@@ -1,4 +1,7 @@
 import logging
+
+from threading import Thread, ThreadError
+
 from Splonecli.Rpc.message import MResponse, MRequest, InvalidMessageError
 from Splonecli.Rpc.msgpackrpc import MsgpackRpc
 from Splonecli.Api.apicall import ApiRegister, ApiRun
@@ -39,6 +42,8 @@ class Plugin:
 		self._responses_pending = {int: Result()}  # msgid: result
 		# pending_results
 		self._results_pending = {int: Result()}  # call_id
+		# active threads
+		self._active_threads = {int: Thread()}
 
 		# set logging level
 		if debug:
@@ -162,25 +167,37 @@ class Plugin:
 			self._rpc.send(response)
 			return
 
-		try:
-			# Send execution validation
-			response.result = [msg.arguments[0][1]]
-			self._rpc.send(response)
-			# TODO: start new thread for call. Implement stop API call
-			result = fun(call.get_method_args())
-			# Send Result
-			msg_result = MRequest()
-			msg_result.function = "result"
-			msg_result.arguments = [[msg.arguments[0][1]], [result]]
-			self._rpc.send(msg_result)
+		# Send execution validation
+		response.result = [msg.arguments[0][1]]
+		self._rpc.send(response)
 
+		# start new thread for call. Implement stop API call
+		try:
+			t = Thread(target=self._execute_function,
+										args=(fun, call.get_method_args(),
+										  msg.arguments[0][1],))
+			t.start()
+			# store active process
+			self._active_threads[msg.arguments[0][1]] = t
+
+		except ThreadError:
+			# Error handling on API -level
+			pass
+
+	def _execute_function(self, fun , args, call_id):
+		msg_result = MRequest()
+		msg_result.function = "result"
+		try:
+			result = fun(args)
+			# Send Result
+			msg_result.arguments = [[call_id], [result]]
+			self._rpc.send(msg_result)
+		# TODO: Error handling on API-level (not discussed yet - errors will be
+		# ignored!)
 		except TypeError:
-			response.error = [400, "Invalid Argument(s)"]
-			self._rpc.send(response)
+			pass
 		except Exception:
-			response.error = [420, "Function Execution failed"]
-			self._rpc.send(response)
-			return
+			pass
 
 	def _handle_result(self, msg: MRequest):
 		# This is not implemented at the server
