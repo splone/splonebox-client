@@ -1,9 +1,6 @@
 import ctypes
 import unittest
-from threading import Lock
-
 import msgpack
-
 from Splonecli.Api.plugin import Plugin
 from Splonecli.Api.remotefunction import RemoteFunction
 from Rpc.message import MRequest, MResponse

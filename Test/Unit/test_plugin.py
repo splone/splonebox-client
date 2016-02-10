@@ -1,6 +1,5 @@
 import unittest
 from unittest.mock import Mock
-from threading import Lock
 
 import Test.mocks as mocks
 from Splonecli.Api.plugin import Plugin

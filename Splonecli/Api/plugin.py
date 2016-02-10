@@ -30,7 +30,7 @@ class Plugin:
 		RemoteFunction.remote_functions["stop"] = (
 			self._stop, ["stop", "terminates the plugin", []])
 
-		# [<api key>, <name>, <description>, <author>, <license>]
+		# [<plugin_id>, <name>, <description>, <author>, <license>]
 		self._metadata = [plugin_id, name, desc, author, licence]
 
 		self._rpc = MsgpackRpc()
