@@ -174,8 +174,8 @@ class Plugin:
 		# start new thread for call. Implement stop API call
 		try:
 			t = Thread(target=self._execute_function,
-										args=(fun, call.get_method_args(),
-										  msg.arguments[0][1],))
+					   args=(fun, call.get_method_args(),
+							 msg.arguments[0][1],))
 			t.start()
 			# store active process
 			self._active_threads[msg.arguments[0][1]] = t
