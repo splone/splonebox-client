@@ -65,23 +65,29 @@ class PluginTest(unittest.TestCase):
 
 	def test_handle_run(self):
 		plug = Plugin("abc", "foo", "bar", "bob", "alice")
-		mocks.plug_rpc_send(plug)
+		send = mocks.plug_rpc_send(plug) # catch results/responses
 
 		mock = Mock()
 		RemoteFunction.remote_functions["mock"] = (mock, ["mock", "", []])
 
 		msg = MRequest()
 		msg.function = "run"
-		msg.arguments = [[b'apikey'], b'mock', [1, 1.1, "hi"]]
+		msg.arguments = [[None, 123], b'mock', [1, 1.1, "hi"]]
 
 		plug._handle_run(msg)
 		mock.assert_called_with([1, 1.1, "hi"])
+		# request was valid -> 1x response + 1x result)
+		self.assertEqual(send.call_count, 2)
 
-		msg.arguments = [[b'apikey'], b'foo', [1, 1.1, "hi"]]
+		msg.arguments = [[None,123], b'foo', [1, 1.1, "hi"]]
 		plug._handle_run(msg)
+		# request was invalid -> 1x error response )
+		self.assertEqual(send.call_count, 3)
 
 		msg.arguments = [None, b'mock', [1, 1.1, "hi"]]
 		plug._handle_run(msg)
+		# request was invalid -> 1x error response )
+		self.assertEqual(send.call_count, 4)
 
 		RemoteFunction.remote_functions = {}
 
@@ -108,7 +114,7 @@ class PluginTest(unittest.TestCase):
 
 		result_request = MRequest()
 		result_request.function = "result"
-		result_request.arguments =[[123], ["Some Result!"]]
+		result_request.arguments = [[123], ["Some Result!"]]
 		plug._handle_result(result_request)
 
 		self.assertEqual(result.get_status(), 2)

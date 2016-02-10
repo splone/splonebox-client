@@ -29,7 +29,9 @@ class CompleteCall(unittest.TestCase):
 		result = plug.run("abc", "add", [7, 8])
 
 		# receive request
-		msg = MRequest.unpack(msgpack.unpackb(mock_sock.send.call_args[0][0]))
+		msg = MRequest.from_unpacked(msgpack.unpackb(mock_sock.send.call_args[0][0]))
+		msg.arguments[0][0] = None  # remove plugin_id
+		msg.arguments[0][1] = 123  # set call id
 		plug._rpc._message_callback(msg.pack())
 
 		# receive response
@@ -37,9 +39,11 @@ class CompleteCall(unittest.TestCase):
 		plug._rpc._message_callback(data)
 		self.assertEqual(result._error, None)
 		self.assertEqual(result.get_status(), 1)
+		self.assertEqual(result.get_id(), 123)
 
 		# receive result request
 		data = mock_sock.send.call_args_list[2][0][0]
 		plug._rpc._message_callback(data)
 		self.assertEqual(result.get_status(), 2)
 		self.assertEqual(result.get_result(blocking=False), [15])
+

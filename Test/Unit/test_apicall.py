@@ -1,6 +1,9 @@
 import unittest
+
+import msgpack
+
 from Splonecli.Api.apicall import InvalidApiCallError, ApiRun, ApiRegister
-from Splonecli.Rpc.message import MRequest, InvalidMessageError
+from Splonecli.Rpc.message import MRequest, InvalidMessageError, Message
 
 
 def collect_tests(suite: unittest.TestSuite):
@@ -15,11 +18,9 @@ class ApiCallTest(unittest.TestCase):
 		msg = MRequest()
 		msg.function = "run"
 
-		msg.arguments = [[b'apikey'], b'fun', []]
+		msg.arguments = [[None, 123], b'fun', []]
 		call = ApiRun.from_msgpack_request(msg)
 		self.assertEqual(call.__class__, ApiRun("a", "b", []).__class__)
-		self.assertEqual(call.msg.arguments[0][0],
-						 msg.arguments[0][0].decode('ascii'))
 		self.assertEqual(call.msg.arguments[1],
 						 msg.arguments[1].decode('ascii'))
 
@@ -27,32 +28,36 @@ class ApiCallTest(unittest.TestCase):
 		with self.assertRaises(InvalidMessageError):
 			ApiRun.from_msgpack_request(msg)
 
-		msg.arguments = [[1], b'fun', []]
+		msg.arguments = [[None], b'fun', []]
 		with self.assertRaises(InvalidMessageError):
 			ApiRun.from_msgpack_request(msg)
 
-		msg.arguments = [[b'key'], 1, []]
+		msg.arguments = [[b'id should not be set',123], 1, []]
 		with self.assertRaises(InvalidMessageError):
 			ApiRun.from_msgpack_request(msg)
 
-		msg.arguments = ["hi", 0, []]
+		msg.arguments = ["not a list", 0, []]
 		with self.assertRaises(InvalidMessageError):
 			ApiRun.from_msgpack_request(msg)
 
-		msg.arguments = [[b"k"], 0, "hi"]
+		msg.arguments = [[None, 123], 0, "not a list"]
 		with self.assertRaises(InvalidMessageError):
 			ApiRun.from_msgpack_request(msg)
 
-		msg.arguments = [[b"k", 1], 0, []]
+		msg.arguments = [[None, 123], "not an int", []]
 		with self.assertRaises(InvalidMessageError):
 			ApiRun.from_msgpack_request(msg)
 
-		msg.arguments = [[b"k", 1], 0, []]
+		msg.arguments = [[b"k", 123], 0, []]
+		with self.assertRaises(InvalidMessageError):
+			ApiRun.from_msgpack_request(msg)
+
+		msg.arguments = [[None, "not an int"], 0, []]
 		with self.assertRaises(InvalidMessageError):
 			ApiRun.from_msgpack_request(msg)
 
 	def test_apiregister(self):
-		metadata = ["api_key", "plugin_name", "description", "MIT", "Guy"]
+		metadata = ["plugin_id", "plugin_name", "description", "MIT", "Guy"]
 		functions = [["foo", "do_foo", [3, -1, 2.0, "", False, b'']]]
 		call = ApiRegister(metadata, functions)
 
@@ -92,28 +97,28 @@ class ApiCallTest(unittest.TestCase):
 		pass
 
 	def test_apirun(self):
-		api_key = "key"
+		plugin_id= "plugin_id"
 		function_name = "name"
 		args = [0]
 
-		call = ApiRun(api_key, function_name, args)
+		call = ApiRun(plugin_id, function_name, args)
 		self.assertEqual(call.msg.function, "run")
-		self.assertEqual(call.get_api_key(), api_key)
+		self.assertEqual(call.get_plugin_id(), plugin_id)
 		self.assertEqual(call.get_method_name(), function_name)
 		self.assertEqual(call.get_method_args(), args)
-		self.assertEqual(call.msg.arguments, [[api_key], function_name, args])
+		self.assertEqual(call.msg.arguments, [[plugin_id, None], function_name, args])
 
 		with self.assertRaises(InvalidApiCallError):
 			ApiRun(2, function_name, args)
 
 		with self.assertRaises(InvalidApiCallError):
-			ApiRun(api_key, 2, args)
+			ApiRun(plugin_id, 2, args)
 
 		with self.assertRaises(InvalidApiCallError):
-			ApiRun(api_key, function_name, [None])
+			ApiRun(plugin_id, function_name, [None])
 
 		with self.assertRaises(InvalidApiCallError):
-			ApiRun(api_key, function_name, [[]])
+			ApiRun(plugin_id, function_name, [[]])
 
 		with self.assertRaises(InvalidApiCallError):
-			ApiRun(api_key, function_name, [object()])
+			ApiRun(plugin_id, function_name, [object()])
