@@ -77,20 +77,27 @@ class PluginTest(unittest.TestCase):
 		msg.arguments = [[None, 123], b'foo', [1, 1.1, "hi"]]
 
 		plug._handle_run(msg)
-		plug._active_threads[123].join()
+		self.assertTrue(plug._active_threads[123].is_alive())
+
+		plug._active_threads.pop(123).join()
 		mock.assert_called_with([1, 1.1, "hi"])
 		# request was valid -> 1x response + 1x result)
 		self.assertEqual(send.call_count, 2)
 
 		msg.arguments = [[None,123], b'mock', [1, 1.1, "hi"]]
+
 		plug._handle_run(msg)
 		# request was invalid -> 1x error response )
 		self.assertEqual(send.call_count, 3)
+		with self.assertRaises(KeyError):
+			plug._active_threads[123]
 
 		msg.arguments = [None, b'mock', [1, 1.1, "hi"]]
 		plug._handle_run(msg)
 		# request was invalid -> 1x error response )
 		self.assertEqual(send.call_count, 4)
+		with self.assertRaises(KeyError):
+			plug._active_threads[123]
 
 		RemoteFunction.remote_functions = {}
 
