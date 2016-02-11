@@ -55,7 +55,7 @@ class MsgpackRpcTest(unittest.TestCase):
 
 		handle_response = mocks.rpc_handle_response(rpc)
 		m_res = MResponse(1)
-		m_res.result = []
+		m_res.response = []
 		rpc._message_callback(m_res.pack())
 		handle_response.assert_called_once_with(m_res)
 
@@ -86,7 +86,7 @@ class MsgpackRpcTest(unittest.TestCase):
 	def test_handle_response(self):
 		rpc = MsgpackRpc()
 		response = MResponse(1234)
-		response.result = []
+		response.response = []
 		mock_callback = Mock()
 
 		rpc._response_callbacks[1234] = mock_callback

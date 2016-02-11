@@ -77,7 +77,7 @@ class PluginTest(unittest.TestCase):
 		msg.arguments = [[None, 123], b'foo', [1, 1.1, "hi"]]
 
 		plug._handle_run(msg)
-		self.assertTrue(plug._active_threads[123].is_alive())
+		self.assertIsNotNone(plug._active_threads.get(123))
 
 		plug._active_threads.pop(123).join()
 		mock.assert_called_with([1, 1.1, "hi"])
@@ -108,7 +108,7 @@ class PluginTest(unittest.TestCase):
 		result = plug.register(blocking=False)
 		register_msg = send_mock.call_args[0][0]
 		response = MResponse(register_msg._msgid)
-		response.result = []
+		response.response = []
 		self.assertEqual(result.get_status(), 0)
 		plug._handle_response(response)
 		self.assertEqual(result.get_status(), 2)
@@ -116,7 +116,7 @@ class PluginTest(unittest.TestCase):
 		result = plug.run("key", "foo", [])
 		run_msg = send_mock.call_args[0][0]
 		response = MResponse(run_msg._msgid)
-		response.result = [123]
+		response.response = [123]
 		self.assertEqual(result.get_status(), 0)
 		plug._handle_response(response)
 		self.assertEqual(result.get_status(), 1)

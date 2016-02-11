@@ -28,7 +28,7 @@ class MessageTest(unittest.TestCase):
 		self.assertEqual(unpacked._type, 1)
 		self.assertEqual(unpacked.get_msgid(), 1)
 		self.assertEqual(unpacked.error, ['err'])
-		self.assertEqual(unpacked.result, ['res'])
+		self.assertEqual(unpacked.response, ['res'])
 
 		msg_notify = [2, 1, ['hi']]
 		unpacked = Message.from_unpacked(msg_notify)
@@ -103,7 +103,7 @@ class MessageTest(unittest.TestCase):
 
 		msg = MResponse(1)
 		msg.error = []
-		msg.result = []
+		msg.response = []
 		self.assertEqual(msg.pack(), msgpack.packb([1, 1, [], []]))
 
 		with self.assertRaises(InvalidMessageError):
@@ -111,12 +111,12 @@ class MessageTest(unittest.TestCase):
 			msg.pack()
 
 		with self.assertRaises(InvalidMessageError):
-			msg.result = ""
+			msg.response = ""
 			msg.error = []
 			msg.pack()
 
 		with self.assertRaises(InvalidMessageError):
-			msg.result = None
+			msg.response = None
 			msg.error = None
 			msg.pack()
 

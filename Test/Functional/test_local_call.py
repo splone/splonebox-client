@@ -60,7 +60,7 @@ class LocalCall(unittest.TestCase):
 		self.assertEqual(msg.get_type(), 1)
 		self.assertEqual(msg.get_msgid(), call.msg.get_msgid())
 		self.assertEqual(msg.error, None)
-		self.assertEqual(msg.result[0], 123)
+		self.assertEqual(msg.response[0], 123)
 
 		# check result
 		msg = mock_send.call_args_list[1][0][0]

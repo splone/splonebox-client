@@ -85,7 +85,7 @@ class CompleteCall(unittest.TestCase):
 		result = plug.register(blocking=False)
 		outgoing = msgpack.unpackb(mock_sock.send.call_args_list[1][0][0])
 		response = MResponse(outgoing[1])
-		response.result = []
+		response.response = []
 		plug._rpc._handle_response(response)
 		self.assertEqual(result.get_status(), 2)
 

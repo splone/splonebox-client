@@ -81,7 +81,7 @@ class Message:
 
 			msg = MResponse(unpacked[1])
 			msg.error = unpacked[2]
-			msg.result = unpacked[3]
+			msg.response = unpacked[3]
 			return msg
 
 		elif t == 2:
@@ -134,7 +134,7 @@ class MResponse(Message):
 	"""
 	Response message
 
-	[<message id>, <message type>, <error>, <result>]
+	[<message id>, <message type>, <error>, <response>]
 	"""
 
 	def __init__(self, msgid: int):
@@ -146,29 +146,29 @@ class MResponse(Message):
 		super().__init__()
 		self._msgid = msgid
 		self.error = None
-		self.result = None
+		self.response = None
 		self._type = 1
 
 	def __eq__(self, other) -> bool:
 		return self._msgid == other.get_msgid() \
-			   and self.error == other.error and self.result == other.result
+			   and self.error == other.error and self.response == other.response
 
 	def __str__(self) -> str:
-		return str([self._type, self._msgid, self.error, self.result])
+		return str([self._type, self._msgid, self.error, self.response])
 
 	def pack(self) -> bytes:
 		"""
 		Packs the response using :msgpack
 		:return: message, serialized using msgpack
 		"""
-		if (self.error is None and self.result is None) or \
+		if (self.error is None and self.response is None) or \
 				not isinstance(self.error, (list, type(None))) or \
-				not isinstance(self.result, (list, type(None))):
+				not isinstance(self.response, (list, type(None))):
 			raise InvalidMessageError(
 				"Unable to pack Response message:\n" + self.__str__())
 		else:
 			return msgpack.packb(
-				[self._type, self._msgid, self.error, self.result],
+				[self._type, self._msgid, self.error, self.response],
 				use_bin_type=True)
 
 

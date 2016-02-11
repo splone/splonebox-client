@@ -105,13 +105,13 @@ class Plugin:
 		else:
 			if result.get_type() == 0:
 				# We received a response for a register call
-				if response.error is None and response.result == []:
+				if response.error is None and response.response == []:
 					result.success()
 				else:
 					result.set_error([400, "Received invalid Response"])
 			elif result.get_type() == 1:
 				# we received a response for a run call
-				result.set_id(response.result[0])
+				result.set_id(response.response[0])
 				self._results_pending[result.get_id()] = result
 
 	def run(self, plugin_id: str, function: str, arguments: []):
@@ -168,7 +168,7 @@ class Plugin:
 			return
 
 		# Send execution validation
-		response.result = [msg.arguments[0][1]]
+		response.response = [msg.arguments[0][1]]
 		self._rpc.send(response)
 
 		# start new thread for call. Implement stop API call
