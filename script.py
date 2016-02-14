@@ -36,3 +36,5 @@ result = plug.run(apikey, "foo", ["Hello World!"])
 
 plug.listen() # just wait for incomming messages
 
+# plug.stop() # make sure to stop the plugin IF you don't listen
+
