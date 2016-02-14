@@ -24,10 +24,10 @@ class RemoteCallTest(unittest.TestCase):
 
 		RemoteFunction(fun2)
 		plug = Plugin("abc", "foo", "bar", "bob", "alice", debug=False)
-		mock_sock = mocks.connection_socket(plug._rpc._connection)
+		mock_send = mocks.rpc_connection_send(plug._rpc)
 
 		plug.register(blocking=False)
-		outgoing = msgpack.unpackb(mock_sock.send.call_args[0][0])
+		outgoing = msgpack.unpackb(mock_send.call_args[0][0])
 
 		self.assertEqual(0, outgoing[0])
 		self.assertEqual(b'register', outgoing[2])
@@ -39,10 +39,10 @@ class RemoteCallTest(unittest.TestCase):
 
 	def test_run_functional(self):
 		plug = Plugin("abc", "foo", "bar", "bob", "alice", debug=False)
-		mock_sock = mocks.connection_socket(plug._rpc._connection)
+		mock_send = mocks.rpc_connection_send(plug._rpc)
 
 		plug.run("plugin_id", "function", [1, "hi", 42.317, b'hi'])
-		outgoing = msgpack.unpackb(mock_sock.send.call_args[0][0])
+		outgoing = msgpack.unpackb(mock_send.call_args[0][0])
 
 		self.assertEqual(0, outgoing[0])
 		self.assertEqual(b'run', outgoing[2])

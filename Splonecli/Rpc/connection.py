@@ -78,7 +78,12 @@ class Connection:
 		:raises: BrokenPipeError if something is wrong with the connection
 		:param msg: Message to be sent
 		"""
-		self._socket.send(msg)
+		totalsent = 0
+		while totalsent < len(msg):
+			sent = self._socket.send(msg[totalsent:])
+			if sent == 0:
+				raise BrokenPipeError("socket connection broken")
+			totalsent = totalsent + sent
 
 	def _listen(self, msg_callback):
 		"""

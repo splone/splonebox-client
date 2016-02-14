@@ -24,11 +24,11 @@ class CompleteCall(unittest.TestCase):
 
 		plug = Plugin("abc", "foo", "bar", "bob", "alice")
 
-		mock_sock = mocks.connection_socket(plug._rpc._connection)
+		mock_send = mocks.rpc_connection_send(plug._rpc)
 		result = plug.run("abc", "add", [7, 8])
 
 		# receive request
-		msg = MRequest.from_unpacked(msgpack.unpackb(mock_sock.send.call_args[0][0]))
+		msg = MRequest.from_unpacked(msgpack.unpackb(mock_send.call_args[0][0]))
 		msg.arguments[0][0] = None  # remove plugin_id
 		msg.arguments[0][1] = 123  # set call id
 		plug._rpc._message_callback(msg.pack())
@@ -37,7 +37,7 @@ class CompleteCall(unittest.TestCase):
 		plug._active_threads[123].join()
 
 		# receive response
-		data = mock_sock.send.call_args_list[1][0][0]
+		data = mock_send.call_args_list[1][0][0]
 		plug._rpc._message_callback(data)
 		self.assertEqual(result._error, None)
 		self.assertEqual(result.get_status(), 1)
@@ -55,10 +55,10 @@ class CompleteCall(unittest.TestCase):
 
 		RemoteFunction(fun)
 		plug = Plugin("abc", "foo", "bar", "bob", "alice", debug=False)
-		mock_sock = mocks.connection_socket(plug._rpc._connection)
+		mock_send = mocks.rpc_connection_send(plug._rpc)
 
 		result = plug.register(blocking=False)
-		outgoing = msgpack.unpackb(mock_sock.send.call_args_list[0][0][0])
+		outgoing = msgpack.unpackb(mock_send.call_args_list[0][0][0])
 
 		# validate outgoing
 		self.assertEqual(0, outgoing[0])
@@ -83,7 +83,7 @@ class CompleteCall(unittest.TestCase):
 
 		# test valid response
 		result = plug.register(blocking=False)
-		outgoing = msgpack.unpackb(mock_sock.send.call_args_list[1][0][0])
+		outgoing = msgpack.unpackb(mock_send.call_args_list[1][0][0])
 		response = MResponse(outgoing[1])
 		response.response = []
 		plug._rpc._handle_response(response)
