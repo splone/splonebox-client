@@ -191,7 +191,8 @@ class Plugin:
 			result = fun(args)
 			# Send Result
 			msg_result.arguments = [[call_id], [result]]
-			self._rpc.send(msg_result)
+			# self._rpc.send(msg_result)
+			logging.info("Would send result: "+ msg_result.__str__())
 		# TODO: Error handling on API-level (not discussed yet - errors will be
 		# ignored!)
 		except TypeError:
