@@ -59,7 +59,7 @@ class Connection:
 		"""
 		if new_thread:
 			self._listen_thread = Thread(target=self._listen, args=(msg_callback,))
-			self._listen_thread.run()
+			self._listen_thread.start()
 			logging.info("Startet listening..")
 		else:
 			logging.info("Startet listening..")
