@@ -26,10 +26,6 @@ class Plugin:
 		:param debug: If true more information will be printed to the output
 		"""
 
-		# register stop function
-		RemoteFunction.remote_functions["stop"] = (
-			self._stop, ["stop", "terminates the plugin", []])
-
 		# [<plugin_id>, <name>, <description>, <author>, <license>]
 		self._metadata = [plugin_id, name, desc, author, licence]
 
@@ -138,9 +134,9 @@ class Plugin:
 		"""
 		self._rpc.listen()
 
-	def _stop(self, *args, **kwargs):
+	def stop(self):
 		"""
-		Remote function to stop the plugin
+		Stops the plugin
 		"""
 		self._rpc.disconnect()
 

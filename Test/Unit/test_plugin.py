@@ -32,12 +32,7 @@ class PluginTest(unittest.TestCase):
 		self.assertEqual(call_args.arguments[0],
 						 ['abc', 'foo', 'bar', 'bob', 'alice'])  # metadata
 
-		self.assertEqual(call_args.arguments[1][0],
-						 RemoteFunction.remote_functions['stop'][
-							 1])  # default stop function
-
-		self.assertEquals(len(call_args.arguments[1]),
-						  1)  # no other functions registered
+		self.assertEquals(len(call_args.arguments[1]), 0)  # no function registered
 
 	def test_connect(self):
 		plug = Plugin("abc", "foo", "bar", "bob", "alice")

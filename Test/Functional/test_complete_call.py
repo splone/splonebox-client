@@ -65,7 +65,6 @@ class CompleteCall(unittest.TestCase):
 		self.assertEqual(b'register', outgoing[2])
 		self.assertEqual([b"abc", b"foo", b"bar", b"bob", b"alice"],
 						 outgoing[3][0])
-		self.assertIn([b"stop", b"terminates the plugin", []], outgoing[3][1])
 		self.assertIn([b'fun', b'', []],
 					  outgoing[3][1])
 
