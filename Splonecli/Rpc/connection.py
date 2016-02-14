@@ -71,6 +71,7 @@ class Connection:
 		:return:
 		"""
 		self._connected = False
+		self._socket.shutdown(socket.SHUT_RDWR)
 		self._socket.close()
 		self._listen_thread.join()
 
@@ -104,7 +105,7 @@ class Connection:
 				data = self._socket.recv(self._buffer_size)
 				if data == b'':
 					raise BrokenPipeError()
-			except (socket.error, BrokenPipeError, OSError):
+			except (BrokenPipeError, OSError):
 				self.is_listening.release()
 				if self._connected:
 					logging.error("Connection was closed by server!")
