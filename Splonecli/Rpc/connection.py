@@ -1,6 +1,6 @@
 import logging
 import socket
-from _thread import start_new_thread
+from threading import Thread
 from multiprocessing import Lock
 
 
@@ -9,6 +9,7 @@ class Connection:
 		self._buffer_size = pow(1024, 2)  # This is defined my msgpack
 		self._ip = None
 		self._port = None
+		self._listen_thread = None
 		self._socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 		self._connected = False
 		self.is_listening = Lock()
@@ -57,7 +58,8 @@ class Connection:
 		It has one argument of type Message
 		"""
 		if new_thread:
-			start_new_thread(self._listen, (msg_callback,))
+			self._listen_thread = Thread(target=self._listen, args=(msg_callback,))
+			self._listen_thread.run()
 			logging.info("Startet listening..")
 		else:
 			logging.info("Startet listening..")
@@ -70,6 +72,7 @@ class Connection:
 		"""
 		self._connected = False
 		self._socket.close()
+		self._listen_thread.join()
 
 	def send_message(self, msg: bytes):
 		"""
@@ -80,9 +83,13 @@ class Connection:
 		"""
 		totalsent = 0
 		while totalsent < len(msg):
-			sent = self._socket.send(msg[totalsent:])
-			if sent == 0:
-				raise BrokenPipeError("socket connection broken")
+			try:
+				sent = self._socket.send(msg[totalsent:])
+				if sent == 0:
+					raise BrokenPipeError()
+			except (OSError, BrokenPipeError):
+				raise BrokenPipeError("Connection has been closed")
+
 			totalsent = totalsent + sent
 
 	def _listen(self, msg_callback):
@@ -92,16 +99,18 @@ class Connection:
 		"""
 
 		self.is_listening.acquire(True)  # Use this to keep Plugin running
-		while True and self._connected:
+		while self._connected:
 			try:
 				data = self._socket.recv(self._buffer_size)
-			except socket.error:
-				if self._connected:
-					# something went wrong
-					raise
-
+				if data == b'':
+					raise BrokenPipeError()
+			except (socket.error, BrokenPipeError, OSError):
 				self.is_listening.release()
+				if self._connected:
+					logging.error("Connection was closed by server!")
+					raise  # only raise on unintentional disconnect
 				return
+
 			# let the callback handle the received data
 			msg_callback(data)
 
