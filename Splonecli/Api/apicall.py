@@ -4,52 +4,50 @@ from Splonecli.Rpc.message import MRequest, InvalidMessageError
 
 
 class ApiCall:
-    """
-  	Wraps :class:`Message` for convenience and type checks
+    """Wraps :class:`Message` for convenience and type checks
 
-  	splonebox specific messages are defined here
-  	"""
+    Splonebox specific messages are defined here
+    """
 
     def __init__(self):
         self.msg = MRequest()
 
 
 class ApiRegister(ApiCall):
+    """Register Api call.
+    [
+        msgid, # some random number. Handled my :class: `Message`
+        type,  # 0 Since it is a Request Type (See :class: `Message`)
+        method, # "register" for obvious reasons
+        [
+            [                          # Metadata
+                <api key>,
+                <plugin name>,
+                <description>,
+                ...
+            ],
+            [                          # List of functions
+                [                  # Function description (See :Plugin:)
+                    <function name>,
+                    <function descripton>,
+                    [<arg (="")>, <arg(=0)>] # Value is given to identify the type
+                ],
+                [...]
+            ]
+
+        ]
+    ]
     """
-  	Register Api call.
-
-  	[
-  		msgid, # some random number. Handled my :class: `Message`
-  		type,  # 0 Since it is a Request Type (See :class: `Message`)
-  		method, # "register" for obvious reasons
-  		[
-  			[                          # Metadata
-  				<api key>,
-  				<plugin name>,
-  				<description>,
-  				...
-  			],
-  			[                          # List of functions
-  				[                      # Function description (See :Plugin:)
-  					<function name>,
-  					<function descripton>,
-  					[<arg (="")>, <arg(=0)>] # Some Value is given to identify the type
-  											 # Usually "" for string, 0 for int ,
-  											 # b'' for binary data , 0.0 for float, False for Bool
-  				]
-  				[]
-  			]
-
-  		]
-  	]
-	  """
     _valid_args = ["", 3, -1, False, 2.0, b'']
 
     def __init__(self, metadata: [], functions: []):
         """
-        :param metadata: The Plugins Metadata: ["api_key", "name", "description",
-        "author", "license"]
-        :param functions: list of function descriptions [name,desc,[arg1,arg2..]]
+        :param metadata: The Plugins Metadata:
+                    ["api_key", "name", "description", "author", "license"]
+
+        :param functions: list of function descriptions
+                    [[name,desc,[arg1,arg2..]], ...]
+
         :raises :InvalidApiCallError if the information is invalid
         """
         super().__init__()
@@ -83,35 +81,36 @@ class ApiRegister(ApiCall):
 
 
 class ApiRun(ApiCall):
+    """Run Api call
+    [
+    msgid, # some random number. Handled my :class: `Message`
+    type,  # 0 Since it is a Request Type (See :class: `Message`)
+    method, # "run" for obvious reasons
+        [
+            [                          # Metadata
+                <(target) plugin id>,
+                call_id
+            ],
+            <function name>,
+            [                          # Functions
+                <arg1>,
+                <arg2>,
+                ...
+            ]
+        ]
     """
-  	Run Api call
-
-  	[
-  		msgid, # some random number. Handled my :class: `Message`
-  		type,  # 0 Since it is a Request Type (See :class: `Message`)
-  		method, # "run" for obvious reasons
-  		[
-  			[                          # Metadata
-  				<(target) plugin id>,
-  				call_id
-  			],
-  			<function name>,
-  			[                          # Functions
-  				<arg1>,
-  				<arg2>,
-  				...
-  			]
-  	]
-  	"""
     _valid_types = (str, bytes, int, float, bool)
 
     @staticmethod
     def from_msgpack_request(msg: MRequest):
-        """
+        """ Turns a :MRessage to ApiRun
+
         :param msg: A Request received and unpacked with MsgpackRpc. It is
-        assumed, that the strings in msg.body are still in binary format!
+                    assumed, that the strings in msg.body are still in
+                    binary format!
         :return: ApiRun
-        :raises: :InvalidMessageError if provided message is not a valid Run call
+        :raises: :InvalidMessageError if provided message is
+                    not a valid Run call
         """
         if not isinstance(msg.function, str) or msg.function != "run":
             raise InvalidMessageError(
@@ -144,7 +143,7 @@ class ApiRun(ApiCall):
                 raise InvalidMessageError("Invalid Argument type!")
 
         call = ApiRun("", msg.arguments[1], msg.arguments[2])
-        call.msg._msgid = msg._msgid # make sure we keep the right msg_id
+        call.msg._msgid = msg._msgid  # make sure we keep the right msg_id
 
         return call
 

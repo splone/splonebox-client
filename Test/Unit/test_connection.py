@@ -22,8 +22,8 @@ class ConnectionTest(unittest.TestCase):
             con.connect("notahost", 1, None, listen=False)
 
         con.connect("127.0.0.1", 6666, None, listen=False)
-        mock_socket.connect.assert_called_with(
-            (socket.gethostbyname("127.0.0.1"), 6666))
+        mock_socket.connect.assert_called_with((socket.gethostbyname(
+            "127.0.0.1"), 6666))
 
         some_callback = mock.Mock()
         listen_mock = mocks.Mock()
@@ -58,10 +58,9 @@ class ConnectionTest(unittest.TestCase):
         # until something is put into the queue
         socket_recv_q = mocks.connection_socket_fake_recv(con)
 
-        start_new_thread(con._listen, (mock_callback,))
+        start_new_thread(con._listen, (mock_callback, ))
         socket_recv_q.put(b'123')
         mock_callback.assert_called_with(b'123')
         con._connected = False
-
 
         pass

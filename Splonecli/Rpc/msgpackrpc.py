@@ -4,136 +4,128 @@ import msgpack
 
 from Splonecli.Rpc.connection import Connection
 from Splonecli.Rpc.message import Message, InvalidMessageError, MResponse, \
-	MNotify
+ MNotify
 
 
 class MsgpackRpc:
-	def __init__(self):
-		self._connection = Connection()
-		self._dispatcher = {}
-		self._response_callbacks = {}
-		self._unpacker = msgpack.Unpacker()
-		pass
+    def __init__(self):
+        self._connection = Connection()
+        self._dispatcher = {}
+        self._response_callbacks = {}
+        self._unpacker = msgpack.Unpacker()
+        pass
 
-	def connect(self, host: str, port: int):
-		"""
-		Connect to given host
+    def connect(self, host: str, port: int):
+        """Connect to given host
 
-		:param host: Hostname to connect to
-		:param port: Port to connect to
-		:raises: :ConnectionRefusedError if socket is unable to connect
-		:raises: :socket.gaierror if Host unknown
-		:raises: :ConnectionError if hostname or port are invalid types
-		"""
-		self._connection.connect(host, port, self._message_callback)
+        :param host: Hostname to connect to
+        :param port: Port to connect to
+        :raises: :ConnectionRefusedError if socket is unable to connect
+        :raises: :socket.gaierror if Host unknown
+        :raises: :ConnectionError if hostname or port are invalid types
+        """
+        self._connection.connect(host, port, self._message_callback)
 
-	def send(self, msg: Message, response_callback=None):
-		"""
-		Sends the given message to the server
+    def send(self, msg: Message, response_callback=None):
+        """Sends the given message to the server
 
-		:param msg: message to send
-		:param response_callback: a function that will be called on response
-		:raises :InvalidMessageError if msg.pack() is not possible
-		:raises :BrokenPipeError if connection is not established
-		:return: None
-		"""
-		logging.info("sending: \n" + msg.__str__())
-		if msg is None:
-			raise InvalidMessageError("Unable to send None!")
-		self._connection.send_message(msg.pack())
+        :param msg: message to send
+        :param response_callback: a function that will be called on response
+        :raises :InvalidMessageError if msg.pack() is not possible
+        :raises :BrokenPipeError if connection is not established
+        :return: None
+        """
+        logging.info("sending: \n" + msg.__str__())
+        if msg is None:
+            raise InvalidMessageError("Unable to send None!")
+        self._connection.send_message(msg.pack())
 
-		if response_callback is not None:
-			self._response_callbacks[msg.get_msgid()] = response_callback
-		# if response callback is None we don't expect a response
+        if response_callback is not None:
+            self._response_callbacks[msg.get_msgid()] = response_callback
+        # if response callback is None we don't expect a response
 
-	def _message_callback(self, data: bytes):
-		"""
-		Handles incoming Messages, is called by :Connection
+    def _message_callback(self, data: bytes):
+        """Handles incoming Messages, is called by :Connection
 
-		:param data: Msgpack serialized message
-		"""
-		self._unpacker.feed(data)
-		messages = []
-		for unpacked in self._unpacker:
-			try:
-				messages.append(Message.from_unpacked(unpacked))
-			except InvalidMessageError:
-				m = MResponse(0)
-				m.error = [400, "Invalid Message Format"]
-				self.send(m)
-				pass
+        :param data: Msgpack serialized message
+        """
+        self._unpacker.feed(data)
+        messages = []
+        for unpacked in self._unpacker:
+            try:
+                messages.append(Message.from_unpacked(unpacked))
+            except InvalidMessageError:
+                m = MResponse(0)
+                m.error = [400, "Invalid Message Format"]
+                self.send(m)
+                pass
 
-		for msg in messages:
-			try:
-				logging.info('Received this message: \n' + msg.__str__())
-				if msg.get_type() == 0:
-					# type == 0  => Message is request
-					self._dispatcher[msg.function](msg)
-				elif msg.get_type() == 1:
-					self._handle_response(msg)
-				elif msg.get_type() == 2:
-					self._handle_notify(msg)
+        for msg in messages:
+            try:
+                logging.info('Received this message: \n' + msg.__str__())
+                if msg.get_type() == 0:
+                    # type == 0  => Message is request
+                    self._dispatcher[msg.function](msg)
+                elif msg.get_type() == 1:
+                    self._handle_response(msg)
+                elif msg.get_type() == 2:
+                    self._handle_notify(msg)
 
-			except InvalidMessageError as e:
-				logging.info(e.name)
-				logging.info(
-					"\n Unable to handle Message\n")
+            except InvalidMessageError as e:
+                logging.info(e.name)
+                logging.info("\n Unable to handle Message\n")
 
-				m = MResponse(msg.get_msgid())
-				m.error = [400, "Could not handle request! " + e.name]
-				self.send(m)
+                m = MResponse(msg.get_msgid())
+                m.error = [400, "Could not handle request! " + e.name]
+                self.send(m)
 
-			except Exception as e:
-				logging.warning("Unexpected exception occurred!")
-				logging.warning(e.__str__())
+            except Exception as e:
+                logging.warning("Unexpected exception occurred!")
+                logging.warning(e.__str__())
 
-				m = MResponse(msg.get_msgid())
-				m.error = [418, "Unexpected exception occurred!"]
+                m = MResponse(msg.get_msgid())
+                m.error = [418, "Unexpected exception occurred!"]
 
-	def register_function(self, foo, name: str):
-		"""
-		:param name: Name of the function
-		:param foo: A function reference
-		:raises DispatcherError
-		"""
-		self._dispatcher[name] = foo
+    def register_function(self, foo, name: str):
+        """Register a function at msgpack rpc dispatcher
 
-	def disconnect(self):
-		"""
-		Disconnect from server
-		"""
-		self._connection.disconnect()
+        :param name: Name of the function
+        :param foo: A function reference
+        :raises DispatcherError
+        """
+        self._dispatcher[name] = foo
 
-	def listen(self):
-		"""
-		Blocks until connection is closed
-		"""
-		self._connection.is_listening.acquire()
+    def disconnect(self):
+        """Disconnect from server"""
+        self._connection.disconnect()
 
-	def _handle_response(self, msg: MResponse):
-		"""
-		Handler for response messages (called by _message_callback)
-		:param msg: MResponse
-		:return:
-		"""
-		try:
-			self._response_callbacks.pop(msg.get_msgid())(msg)
-		except Exception:
-			if msg.error is not None:
-				logging.warning(
-					"Received error unrelated to any message!\n"
-					+ msg.error.__str__())
-			else:
-				logging.warning(
-					"The msgid in given response does not match any request!\n")
+    def listen(self):
+        """Blocks until connection is closed"""
+        self._connection.is_listening.acquire()
 
-			raise
-		pass
+    def _handle_response(self, msg: MResponse):
+        """Handler for response messages (called by _message_callback)
 
-	def _handle_notify(self, msg: MNotify):
-		"""
-			Notfication messages are not implemented yes
-			:param msg: :MNotify
-			:return:
-			"""
-		pass
+        :param msg: MResponse
+        :return:
+        """
+        try:
+            self._response_callbacks.pop(msg.get_msgid())(msg)
+        except Exception:
+            if msg.error is not None:
+                logging.warning("Received error unrelated to any message!\n" +
+                                msg.error.__str__())
+            else:
+                logging.warning(
+                    "The msgid in given response does not match any request!\n")
+
+            raise
+        pass
+
+    def _handle_notify(self, msg: MNotify):
+        """Notfication messages are not used yet
+
+        :param msg: :MNotify
+        :return:
+        """
+        pass

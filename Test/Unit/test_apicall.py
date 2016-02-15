@@ -1,124 +1,124 @@
 import unittest
 
-import msgpack
 
 from Splonecli.Api.apicall import InvalidApiCallError, ApiRun, ApiRegister
-from Splonecli.Rpc.message import MRequest, InvalidMessageError, Message
+from Splonecli.Rpc.message import MRequest, InvalidMessageError
 
 
 def collect_tests(suite: unittest.TestSuite):
-	suite.addTest(ApiCallTest("test_apiregister"))
-	suite.addTest(ApiCallTest("test_apirun"))
-	suite.addTest(ApiCallTest("test_from_msgpack_request"))
-	pass
+    suite.addTest(ApiCallTest("test_apiregister"))
+    suite.addTest(ApiCallTest("test_apirun"))
+    suite.addTest(ApiCallTest("test_from_msgpack_request"))
+    pass
 
 
 class ApiCallTest(unittest.TestCase):
-	def test_from_msgpack_request(self):
-		msg = MRequest()
-		msg.function = "run"
+    def test_from_msgpack_request(self):
+        msg = MRequest()
+        msg.function = "run"
 
-		msg.arguments = [[None, 123], b'fun', []]
-		call = ApiRun.from_msgpack_request(msg)
-		self.assertEqual(call.__class__, ApiRun("a", "b", []).__class__)
-		self.assertEqual(call.msg.arguments[1],
-						 msg.arguments[1].decode('ascii'))
+        msg.arguments = [[None, 123], b'fun', []]
+        call = ApiRun.from_msgpack_request(msg)
+        self.assertEqual(call.__class__, ApiRun("a", "b", []).__class__)
+        self.assertEqual(call.msg.arguments[1],
+                         msg.arguments[1].decode('ascii'))
 
-		msg.function = None
-		with self.assertRaises(InvalidMessageError):
-			ApiRun.from_msgpack_request(msg)
+        msg.function = None
+        with self.assertRaises(InvalidMessageError):
+            ApiRun.from_msgpack_request(msg)
 
-		msg.arguments = [[None], b'fun', []]
-		with self.assertRaises(InvalidMessageError):
-			ApiRun.from_msgpack_request(msg)
+        msg.arguments = [[None], b'fun', []]
+        with self.assertRaises(InvalidMessageError):
+            ApiRun.from_msgpack_request(msg)
 
-		msg.arguments = [[b'id should not be set',123], 1, []]
-		with self.assertRaises(InvalidMessageError):
-			ApiRun.from_msgpack_request(msg)
+        msg.arguments = [[b'id should not be set', 123], 1, []]
+        with self.assertRaises(InvalidMessageError):
+            ApiRun.from_msgpack_request(msg)
 
-		msg.arguments = ["not a list", 0, []]
-		with self.assertRaises(InvalidMessageError):
-			ApiRun.from_msgpack_request(msg)
+        msg.arguments = ["not a list", 0, []]
+        with self.assertRaises(InvalidMessageError):
+            ApiRun.from_msgpack_request(msg)
 
-		msg.arguments = [[None, 123], 0, "not a list"]
-		with self.assertRaises(InvalidMessageError):
-			ApiRun.from_msgpack_request(msg)
+        msg.arguments = [[None, 123], 0, "not a list"]
+        with self.assertRaises(InvalidMessageError):
+            ApiRun.from_msgpack_request(msg)
 
-		msg.arguments = [[None, 123], "not an int", []]
-		with self.assertRaises(InvalidMessageError):
-			ApiRun.from_msgpack_request(msg)
+        msg.arguments = [[None, 123], "not an int", []]
+        with self.assertRaises(InvalidMessageError):
+            ApiRun.from_msgpack_request(msg)
 
-		msg.arguments = [[b"k", 123], 0, []]
-		with self.assertRaises(InvalidMessageError):
-			ApiRun.from_msgpack_request(msg)
+        msg.arguments = [[b"k", 123], 0, []]
+        with self.assertRaises(InvalidMessageError):
+            ApiRun.from_msgpack_request(msg)
 
-		msg.arguments = [[None, "not an int"], 0, []]
-		with self.assertRaises(InvalidMessageError):
-			ApiRun.from_msgpack_request(msg)
+        msg.arguments = [[None, "not an int"], 0, []]
+        with self.assertRaises(InvalidMessageError):
+            ApiRun.from_msgpack_request(msg)
 
-	def test_apiregister(self):
-		metadata = ["plugin_id", "plugin_name", "description", "MIT", "Guy"]
-		functions = [["foo", "do_foo", [3, -1, 2.0, "", False, b'']]]
-		call = ApiRegister(metadata, functions)
+    def test_apiregister(self):
+        metadata = ["plugin_id", "plugin_name", "description", "MIT", "Guy"]
+        functions = [["foo", "do_foo", [3, -1, 2.0, "", False, b'']]]
+        call = ApiRegister(metadata, functions)
 
-		self.assertEqual(call.msg.function, "register")
-		self.assertEqual(call.msg.arguments, [metadata, functions])
+        self.assertEqual(call.msg.function, "register")
+        self.assertEqual(call.msg.arguments, [metadata, functions])
 
-		for i in range(5):
-			with self.assertRaises(InvalidApiCallError):
-				temp = metadata.copy()
-				temp[i] = None
-				ApiRegister(temp, functions)
+        for i in range(5):
+            with self.assertRaises(InvalidApiCallError):
+                temp = metadata.copy()
+                temp[i] = None
+                ApiRegister(temp, functions)
 
-		invalid = [0.0, 1, -1, b'hi', True]
-		for i in range(5):
-			with self.assertRaises(InvalidApiCallError):
-				temp = metadata.copy()
-				temp[i] = invalid[i]
-				ApiRegister(temp, functions)
+        invalid = [0.0, 1, -1, b'hi', True]
+        for i in range(5):
+            with self.assertRaises(InvalidApiCallError):
+                temp = metadata.copy()
+                temp[i] = invalid[i]
+                ApiRegister(temp, functions)
 
-		with self.assertRaises(InvalidApiCallError):
-			ApiRegister(None, functions)
+        with self.assertRaises(InvalidApiCallError):
+            ApiRegister(None, functions)
 
-		with self.assertRaises(InvalidApiCallError):
-			ApiRegister(metadata, None)
+        with self.assertRaises(InvalidApiCallError):
+            ApiRegister(metadata, None)
 
-		invalid = [1.2, 800, -92, b'hi', True, "something"]
-		for inv in invalid:
-			with self.assertRaises(InvalidApiCallError):
-				ApiRegister(metadata, [["a", "b", [inv]]])
+        invalid = [1.2, 800, -92, b'hi', True, "something"]
+        for inv in invalid:
+            with self.assertRaises(InvalidApiCallError):
+                ApiRegister(metadata, [["a", "b", [inv]]])
 
-		with self.assertRaises(InvalidApiCallError):
-			ApiRegister(metadata, ["bla"])
+        with self.assertRaises(InvalidApiCallError):
+            ApiRegister(metadata, ["bla"])
 
-		with self.assertRaises(InvalidApiCallError):
-			ApiRegister(metadata, [None])
+        with self.assertRaises(InvalidApiCallError):
+            ApiRegister(metadata, [None])
 
-		pass
+        pass
 
-	def test_apirun(self):
-		plugin_id= "plugin_id"
-		function_name = "name"
-		args = [0]
+    def test_apirun(self):
+        plugin_id = "plugin_id"
+        function_name = "name"
+        args = [0]
 
-		call = ApiRun(plugin_id, function_name, args)
-		self.assertEqual(call.msg.function, "run")
-		self.assertEqual(call.get_plugin_id(), plugin_id)
-		self.assertEqual(call.get_method_name(), function_name)
-		self.assertEqual(call.get_method_args(), args)
-		self.assertEqual(call.msg.arguments, [[plugin_id, None], function_name, args])
+        call = ApiRun(plugin_id, function_name, args)
+        self.assertEqual(call.msg.function, "run")
+        self.assertEqual(call.get_plugin_id(), plugin_id)
+        self.assertEqual(call.get_method_name(), function_name)
+        self.assertEqual(call.get_method_args(), args)
+        self.assertEqual(call.msg.arguments, [[plugin_id, None], function_name,
+                                              args])
 
-		with self.assertRaises(InvalidApiCallError):
-			ApiRun(2, function_name, args)
+        with self.assertRaises(InvalidApiCallError):
+            ApiRun(2, function_name, args)
 
-		with self.assertRaises(InvalidApiCallError):
-			ApiRun(plugin_id, 2, args)
+        with self.assertRaises(InvalidApiCallError):
+            ApiRun(plugin_id, 2, args)
 
-		with self.assertRaises(InvalidApiCallError):
-			ApiRun(plugin_id, function_name, [None])
+        with self.assertRaises(InvalidApiCallError):
+            ApiRun(plugin_id, function_name, [None])
 
-		with self.assertRaises(InvalidApiCallError):
-			ApiRun(plugin_id, function_name, [[]])
+        with self.assertRaises(InvalidApiCallError):
+            ApiRun(plugin_id, function_name, [[]])
 
-		with self.assertRaises(InvalidApiCallError):
-			ApiRun(plugin_id, function_name, [object()])
+        with self.assertRaises(InvalidApiCallError):
+            ApiRun(plugin_id, function_name, [object()])
