@@ -82,6 +82,9 @@ class Connection:
 		:raises: BrokenPipeError if something is wrong with the connection
 		:param msg: Message to be sent
 		"""
+		if not self._connected:
+			raise BrokenPipeError("Connection has been closed")
+
 		totalsent = 0
 		while totalsent < len(msg):
 			try:
@@ -99,13 +102,14 @@ class Connection:
 		:raises: ConnectionError if connection is unexpectedly terminated
 		"""
 
-		self.is_listening.acquire(True)  # Use this to keep Plugin running
+		self.is_listening.acquire(True)
 		while self._connected:
 			try:
 				data = self._socket.recv(self._buffer_size)
 				if data == b'':
 					raise BrokenPipeError()
 			except (BrokenPipeError, OSError):
+				self._connected = False
 				self.is_listening.release()
 				if self._connected:
 					logging.error("Connection was closed by server!")
