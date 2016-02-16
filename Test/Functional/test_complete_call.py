@@ -3,7 +3,7 @@ import unittest
 import msgpack
 from Splonecli.Api.plugin import Plugin
 from Splonecli.Api.remotefunction import RemoteFunction
-from Rpc.message import MRequest, MResponse
+from Splonecli.Rpc.message import MRequest, MResponse
 from Test import mocks
 
 
