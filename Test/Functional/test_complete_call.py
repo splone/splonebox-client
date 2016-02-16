@@ -51,6 +51,9 @@ class CompleteCall(unittest.TestCase):
         # self.assertEqual(result.get_status(), 2)
         # self.assertEqual(result.get_result(blocking=False), [15])
 
+        # cleanup remote_functions
+        RemoteFunction.remote_functions = {}
+
     def test_complete_register(self):
         def fun():
             pass
@@ -88,3 +91,6 @@ class CompleteCall(unittest.TestCase):
         response.response = []
         plug._rpc._handle_response(response)
         self.assertEqual(result.get_status(), 2)
+
+        # cleanup remote_functions
+        RemoteFunction.remote_functions = {}

@@ -65,3 +65,6 @@ class LocalCall(unittest.TestCase):
         # self.assertEqual(msg.get_type(), 0)
         # self.assertEqual(msg.function, "result")
         # self.assertEqual(msg.arguments[0][0], 123)
+
+        # cleanup remote_functions
+        RemoteFunction.remote_functions = {}

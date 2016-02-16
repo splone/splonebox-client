@@ -36,6 +36,9 @@ class RemoteCallTest(unittest.TestCase):
         self.assertIn(
             [b'fun2', b'', [False, b'', 3, -1, 2.0, b'', -1]], outgoing[3][1])
 
+        # cleanup remote_functions
+        RemoteFunction.remote_functions = {}
+
     def test_run_functional(self):
         plug = Plugin("abc", "foo", "bar", "bob", "alice", debug=False)
         mock_send = mocks.rpc_connection_send(plug._rpc)
