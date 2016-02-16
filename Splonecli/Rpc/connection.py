@@ -109,10 +109,10 @@ class Connection:
                 if data == b'':
                     raise BrokenPipeError()
             except (BrokenPipeError, OSError):
-                self._connected = False
                 self.is_listening.release()
                 if self._connected:
                     logging.error("Connection was closed by server!")
+                    self._connected = False
                     raise  # only raise on unintentional disconnect
                 return
 
