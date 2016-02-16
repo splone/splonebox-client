@@ -18,9 +18,6 @@ class ConnectionTest(unittest.TestCase):
         con = Connection()
         mock_socket = mocks.connection_socket(con)
 
-        with self.assertRaises(socket.gaierror):
-            con.connect("notahost", 1, None, listen=False)
-
         con.connect("127.0.0.1", 6666, None, listen=False)
         mock_socket.connect.assert_called_with((socket.gethostbyname(
             "127.0.0.1"), 6666))
