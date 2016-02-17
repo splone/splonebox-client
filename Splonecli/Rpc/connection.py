@@ -108,7 +108,7 @@ class Connection:
                 data = self._socket.recv(self._buffer_size)
                 if data == b'':
                     raise BrokenPipeError()
-            except (BrokenPipeError, OSError):
+            except (BrokenPipeError, OSError, ConnectionResetError):
                 self.is_listening.release()
                 if self._connected:
                     logging.error("Connection was closed by server!")
