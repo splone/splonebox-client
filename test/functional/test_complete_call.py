@@ -1,10 +1,10 @@
 import ctypes
 import unittest
 import msgpack
-from Splonecli.Api.plugin import Plugin
-from Splonecli.Api.remotefunction import RemoteFunction
-from Splonecli.Rpc.message import MRequest, MResponse
-from Test import mocks
+from splonecli.api.plugin import Plugin
+from splonecli.api.remotefunction import RemoteFunction
+from splonecli.rpc.message import MRequest, MResponse
+from test import mocks
 
 
 def collect_tests(suite: unittest.TestSuite):

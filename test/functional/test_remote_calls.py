@@ -4,9 +4,9 @@ import unittest
 from unittest.mock import Mock
 import msgpack
 
-from Splonecli.Api.plugin import Plugin
-from Splonecli.Api.remotefunction import RemoteFunction
-from Test import mocks
+from splonecli.api.plugin import Plugin
+from splonecli.api.remotefunction import RemoteFunction
+from test import mocks
 
 
 def collect_tests(suite: unittest.TestSuite):

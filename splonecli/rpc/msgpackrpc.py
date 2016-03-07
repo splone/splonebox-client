@@ -2,8 +2,8 @@ import logging
 
 import msgpack
 
-from Splonecli.Rpc.connection import Connection
-from Splonecli.Rpc.message import Message, InvalidMessageError, MResponse, \
+from splonecli.rpc.connection import Connection
+from splonecli.rpc.message import Message, InvalidMessageError, MResponse, \
  MNotify
 
 

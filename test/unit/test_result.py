@@ -1,6 +1,6 @@
 import unittest
 
-from Splonecli.Api.result import Result, RegisterResult, RemoteError, RunResult
+from splonecli.api.result import Result, RegisterResult, RemoteError, RunResult
 
 
 def collect_tests(suite: unittest.TestSuite):

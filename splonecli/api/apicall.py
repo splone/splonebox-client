@@ -1,6 +1,6 @@
 import copy
 
-from Splonecli.Rpc.message import MRequest, InvalidMessageError
+from splonecli.rpc.message import MRequest, InvalidMessageError
 
 
 class ApiCall:
@@ -14,7 +14,7 @@ class ApiCall:
 
 
 class ApiRegister(ApiCall):
-    """Register Api call.
+    """Register api call.
     [
         msgid, # some random number. Handled my :class: `Message`
         type,  # 0 Since it is a Request Type (See :class: `Message`)
@@ -81,7 +81,7 @@ class ApiRegister(ApiCall):
 
 
 class ApiRun(ApiCall):
-    """Run Api call
+    """Run api call
     [
     msgid, # some random number. Handled my :class: `Message`
     type,  # 0 Since it is a Request Type (See :class: `Message`)

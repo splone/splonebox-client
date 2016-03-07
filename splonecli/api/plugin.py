@@ -2,11 +2,11 @@ import logging
 
 from threading import Thread, ThreadError
 
-from Splonecli.Rpc.message import MResponse, MRequest, InvalidMessageError
-from Splonecli.Rpc.msgpackrpc import MsgpackRpc
-from Splonecli.Api.apicall import ApiRegister, ApiRun
-from Splonecli.Api.remotefunction import RemoteFunction
-from Splonecli.Api.result import RunResult, Result, RegisterResult
+from splonecli.rpc.message import MResponse, MRequest, InvalidMessageError
+from splonecli.rpc.msgpackrpc import MsgpackRpc
+from splonecli.api.apicall import ApiRegister, ApiRun
+from splonecli.api.remotefunction import RemoteFunction
+from splonecli.api.result import RunResult, Result, RegisterResult
 
 
 class Plugin:
@@ -18,7 +18,7 @@ class Plugin:
                  licence: str,
                  debug=False):
         """
-        :param plugin_id: Api key (make sure it was added to the core)
+        :param plugin_id: api key (make sure it was added to the core)
         :param name: Name of the plugin
         :param desc: Description of the plugin
         :param author: Author of the plugin

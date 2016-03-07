@@ -1,10 +1,10 @@
 import socket
 from queue import Queue
 from unittest.mock import Mock
-from Splonecli.Api.plugin import Plugin
-from Splonecli.Rpc import connection
-from Splonecli.Rpc.connection import Connection
-from Splonecli.Rpc.msgpackrpc import MsgpackRpc
+from splonecli.api.plugin import Plugin
+from splonecli.rpc import connection
+from splonecli.rpc.connection import Connection
+from splonecli.rpc.msgpackrpc import MsgpackRpc
 
 
 # noinspection PyProtectedMember

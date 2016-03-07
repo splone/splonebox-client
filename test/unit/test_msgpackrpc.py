@@ -1,9 +1,9 @@
 import unittest
 from unittest.mock import Mock
-from Splonecli.Rpc.message import MRequest, InvalidMessageError, MNotify, \
+from splonecli.rpc.message import MRequest, InvalidMessageError, MNotify, \
  MResponse
-from Splonecli.Rpc.msgpackrpc import MsgpackRpc
-from Test import mocks
+from splonecli.rpc.msgpackrpc import MsgpackRpc
+from test import mocks
 
 
 def collect_tests(suite: unittest.TestSuite):

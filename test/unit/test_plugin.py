@@ -1,10 +1,10 @@
 import unittest
 from unittest.mock import Mock
 
-import Test.mocks as mocks
-from Splonecli.Api.plugin import Plugin
-from Splonecli.Rpc.message import MResponse, MRequest
-from Splonecli.Api.remotefunction import RemoteFunction
+import test.mocks as mocks
+from splonecli.api.plugin import Plugin
+from splonecli.rpc.message import MResponse, MRequest
+from splonecli.api.remotefunction import RemoteFunction
 
 
 def collect_tests(suite: unittest.TestSuite):
