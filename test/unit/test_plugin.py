@@ -20,10 +20,10 @@ see <http://www.gnu.org/licenses/>.
 import unittest
 from unittest.mock import Mock
 
-import Test.mocks as mocks
-from Splonecli.Api.plugin import Plugin
-from Splonecli.Rpc.message import MResponse, MRequest
-from Splonecli.Api.remotefunction import RemoteFunction
+import test.mocks as mocks
+from splonecli.api.plugin import Plugin
+from splonecli.rpc.message import MResponse, MRequest
+from splonecli.api.remotefunction import RemoteFunction
 
 
 def collect_tests(suite: unittest.TestSuite):
@@ -139,11 +139,3 @@ class PluginTest(unittest.TestCase):
         plug._handle_response(response)
         self.assertEqual(result.get_status(), 1)
         self.assertEqual(result.get_id(), 123)
-
-        result_request = MRequest()
-        result_request.function = "result"
-        result_request.arguments = [[123], ["Some Result!"]]
-        plug._handle_result(result_request)
-
-        self.assertEqual(result.get_status(), 2)
-        self.assertEqual(result.get_result(), ["Some Result!"])

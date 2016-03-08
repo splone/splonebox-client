@@ -3,8 +3,8 @@ import unittest
 import unittest.mock as mock
 from _thread import start_new_thread
 
-from Splonecli.Rpc.connection import Connection
-from Test import mocks
+from splonecli.rpc.connection import Connection
+from test import mocks
 
 
 def collect_tests(suite: unittest.TestSuite):

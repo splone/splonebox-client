@@ -21,7 +21,7 @@ import ctypes
 import unittest
 from unittest.mock import Mock
 
-from Splonecli.Api.remotefunction import RemoteFunction
+from splonecli.api.remotefunction import RemoteFunction
 
 
 def collect_tests(suite: unittest.TestSuite):

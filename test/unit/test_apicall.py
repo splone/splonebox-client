@@ -21,8 +21,8 @@ see <http://www.gnu.org/licenses/>.
 import unittest
 
 
-from Splonecli.Api.apicall import InvalidApiCallError, ApiRun, ApiRegister
-from Splonecli.Rpc.message import MRequest, InvalidMessageError
+from splonecli.api.apicall import InvalidApiCallError, ApiRun, ApiRegister
+from splonecli.rpc.message import MRequest, InvalidMessageError
 
 
 def collect_tests(suite: unittest.TestSuite):

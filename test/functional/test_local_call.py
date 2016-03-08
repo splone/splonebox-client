@@ -23,10 +23,10 @@ from _thread import start_new_thread
 from threading import Lock
 from unittest.mock import Mock
 
-from Splonecli.Api.apicall import ApiRun
-from Splonecli.Api.plugin import Plugin
-from Splonecli.Api.remotefunction import RemoteFunction
-from Test import mocks
+from splonecli.api.apicall import ApiRun
+from splonecli.api.plugin import Plugin
+from splonecli.api.remotefunction import RemoteFunction
+from test import mocks
 
 
 def collect_tests(suite: unittest.TestSuite):

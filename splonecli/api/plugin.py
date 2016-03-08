@@ -21,11 +21,11 @@ import logging
 
 from threading import Thread, ThreadError
 
-from Splonecli.Rpc.message import MResponse, MRequest, InvalidMessageError
-from Splonecli.Rpc.msgpackrpc import MsgpackRpc
-from Splonecli.Api.apicall import ApiRegister, ApiRun
-from Splonecli.Api.remotefunction import RemoteFunction
-from Splonecli.Api.result import RunResult, Result, RegisterResult
+from splonecli.rpc.message import MResponse, MRequest, InvalidMessageError
+from splonecli.rpc.msgpackrpc import MsgpackRpc
+from splonecli.api.apicall import ApiRegister, ApiRun
+from splonecli.api.remotefunction import RemoteFunction
+from splonecli.api.result import RunResult, Result, RegisterResult
 
 
 class Plugin:
@@ -37,7 +37,7 @@ class Plugin:
                  licence: str,
                  debug=False):
         """
-        :param plugin_id: Api key (make sure it was added to the core)
+        :param plugin_id: api key (make sure it was added to the core)
         :param name: Name of the plugin
         :param desc: Description of the plugin
         :param author: Author of the plugin
@@ -50,12 +50,11 @@ class Plugin:
         self._rpc = MsgpackRpc()
         # register run function @ rpc dispatcher
         self._rpc.register_function(self._handle_run, "run")
-        self._rpc.register_function(self._handle_result, "result")
 
         # pending_responses
         self._responses_pending = {int: Result()}  # msgid: result
         # pending_results
-        self._results_pending = {int: Result()}  # call_id
+        self._results_pending = {int: Result()}  # call_id: result
         # active threads
         self._active_threads = {int: Thread()}
 
@@ -205,11 +204,6 @@ class Plugin:
             pass
         except Exception:
             pass
-
-    def _handle_result(self, msg: MRequest):
-        # This is not implemented at the server
-        # TODO: Implement ApiCall ApiResult!
-        self._results_pending[msg.arguments[0][0]].set_result(msg.arguments[1])
 
 
 class PluginError(Exception):

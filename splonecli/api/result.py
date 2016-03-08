@@ -22,6 +22,12 @@ from threading import Event
 
 
 class Result():
+    """ A class for storing and handling results
+
+    The _type variable identifies the type of a result.
+    0 = RegisterResult
+    1 = RunResult
+    """
     def __init__(self):
         self._type = None
         self._error = None
@@ -83,7 +89,7 @@ class RunResult(Result):
     """A Result returned by a run call"""
     def __init__(self):
         super().__init__()
-        self._type = 1  # This is a response to a run call
+        self._type = 1
         self._id = None
         self._result = None
 

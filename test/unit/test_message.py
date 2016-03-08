@@ -21,7 +21,7 @@ import unittest
 
 import msgpack
 
-from Splonecli.Rpc.message import MRequest, Message, MResponse, MNotify, \
+from splonecli.rpc.message import MRequest, Message, MResponse, MNotify, \
  InvalidMessageError
 
 
