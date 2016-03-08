@@ -120,11 +120,3 @@ class PluginTest(unittest.TestCase):
         plug._handle_response(response)
         self.assertEqual(result.get_status(), 1)
         self.assertEqual(result.get_id(), 123)
-
-        result_request = MRequest()
-        result_request.function = "result"
-        result_request.arguments = [[123], ["Some Result!"]]
-        plug._handle_result(result_request)
-
-        self.assertEqual(result.get_status(), 2)
-        self.assertEqual(result.get_result(), ["Some Result!"])

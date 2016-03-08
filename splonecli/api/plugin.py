@@ -31,7 +31,6 @@ class Plugin:
         self._rpc = MsgpackRpc()
         # register run function @ rpc dispatcher
         self._rpc.register_function(self._handle_run, "run")
-        self._rpc.register_function(self._handle_result, "result")
 
         # pending_responses
         self._responses_pending = {int: Result()}  # msgid: result
