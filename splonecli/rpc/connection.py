@@ -119,7 +119,7 @@ class Connection:
             # let the callback handle the received data
             msg_callback(data)
 
-        self.is_listening.release()  # Tell everyone we are done
+        self.is_listening.release()
 
     def is_connected(self) -> bool:
         """

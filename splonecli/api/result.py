@@ -70,7 +70,7 @@ class RunResult(Result):
     """A Result returned by a run call"""
     def __init__(self):
         super().__init__()
-        self._type = 1  # This is a response to a run call
+        self._type = 1
         self._id = None
         self._result = None
 
