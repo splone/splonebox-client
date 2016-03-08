@@ -36,7 +36,7 @@ class Plugin:
         # pending_responses
         self._responses_pending = {int: Result()}  # msgid: result
         # pending_results
-        self._results_pending = {int: Result()}  # call_id
+        self._results_pending = {int: Result()}  # call_id: result
         # active threads
         self._active_threads = {int: Thread()}
 

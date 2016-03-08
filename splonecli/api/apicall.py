@@ -143,7 +143,7 @@ class ApiRun(ApiCall):
                 raise InvalidMessageError("Invalid Argument type!")
 
         call = ApiRun("", msg.arguments[1], msg.arguments[2])
-        call.msg._msgid = msg._msgid  # make sure we keep the right msg_id
+        call.msg._msgid = msg._msgid  # keep the original msg_id
 
         return call
 

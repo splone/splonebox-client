@@ -3,6 +3,12 @@ from threading import Event
 
 
 class Result():
+    """ A class for storing and handling results
+
+    The _type variable identifies the type of a result.
+    0 = RegisterResult
+    1 = RunResult
+    """
     def __init__(self):
         self._type = None
         self._error = None
