@@ -187,11 +187,6 @@ class Plugin:
         except Exception:
             pass
 
-    def _handle_result(self, msg: MRequest):
-        # This is not implemented at the server
-        # TODO: Implement ApiCall ApiResult!
-        self._results_pending[msg.arguments[0][0]].set_result(msg.arguments[1])
-
 
 class PluginError(Exception):
     def __init__(self, value: str):
