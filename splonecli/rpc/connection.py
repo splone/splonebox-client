@@ -21,7 +21,10 @@ import logging
 import socket
 from threading import Thread
 from multiprocessing import Lock
-
+from multiprocessing import Semaphore
+from splonecli.rpc.crypto import Crypto
+from splonecli.rpc.crypto import CryptoState
+import binascii
 
 class Connection:
     def __init__(self):
@@ -32,6 +35,8 @@ class Connection:
         self._socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self._connected = False
         self.is_listening = Lock()
+        self.crypto_context = Crypto()
+        self.tunnelestablished_sem = Semaphore(value=0)
 
     def connect(self,
                 hostname: str,
@@ -70,6 +75,15 @@ class Connection:
         if listen:
             self.listen(msg_callback, new_thread=listen_on_new_thread)
 
+        tunnelpacket = self.crypto_context.crypto_tunnel()
+
+        try:
+            sent = self._socket.send(tunnelpacket)
+            if sent == 0:
+                raise BrokenPipeError()
+        except (OSError, BrokenPipeError):
+            raise BrokenPipeError("Connection has been closed")
+
     def listen(self, msg_callback, new_thread=True):
         """ Wrapper for the _listen function
 
@@ -105,10 +119,12 @@ class Connection:
         if not self._connected:
             raise BrokenPipeError("Connection has been closed")
 
+        boxed = self.crypto_context.crypto_write(msg)
+
         totalsent = 0
-        while totalsent < len(msg):
+        while totalsent < len(boxed):
             try:
-                sent = self._socket.send(msg[totalsent:])
+                sent = self._socket.send(boxed[totalsent:])
                 if sent == 0:
                     raise BrokenPipeError()
             except (OSError, BrokenPipeError):
@@ -135,8 +151,16 @@ class Connection:
                     raise  # only raise on unintentional disconnect
                 return
 
+            if self.crypto_context._state == CryptoState.INITIAL:
+                self.crypto_context.crypto_tunnel_read(data)
+                if self.crypto_context._state == CryptoState.ESTABLISHED:
+                    self.tunnelestablished_sem.release()
+                continue
+
+            plain = self.crypto_context.crypto_read(data)
+
             # let the callback handle the received data
-            msg_callback(data)
+            msg_callback(plain)
 
         self.is_listening.release()
 
