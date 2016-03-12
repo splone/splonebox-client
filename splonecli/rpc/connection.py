@@ -24,7 +24,6 @@ from multiprocessing import Lock
 from multiprocessing import Semaphore
 from splonecli.rpc.crypto import Crypto
 from splonecli.rpc.crypto import CryptoState
-import binascii
 
 class Connection:
     def __init__(self):
@@ -151,9 +150,9 @@ class Connection:
                     raise  # only raise on unintentional disconnect
                 return
 
-            if self.crypto_context._state == CryptoState.INITIAL:
+            if self.crypto_context.state == CryptoState.INITIAL:
                 self.crypto_context.crypto_tunnel_read(data)
-                if self.crypto_context._state == CryptoState.ESTABLISHED:
+                if self.crypto_context.state == CryptoState.ESTABLISHED:
                     self.tunnelestablished_sem.release()
                 continue
 

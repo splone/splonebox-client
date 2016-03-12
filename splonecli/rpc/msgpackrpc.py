@@ -55,7 +55,7 @@ class MsgpackRpc:
         :raises :BrokenPipeError if connection is not established
         :return: None
         """
-        if self._connection.crypto_context._state != CryptoState.ESTABLISHED:
+        if self._connection.crypto_context.state != CryptoState.ESTABLISHED:
             self._connection.tunnelestablished_sem.acquire()
 
         logging.info("sending: \n" + msg.__str__())
