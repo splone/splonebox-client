@@ -25,6 +25,7 @@ from multiprocessing import Semaphore
 from splonecli.rpc.crypto import Crypto
 from splonecli.rpc.crypto import CryptoState
 
+
 class Connection:
     def __init__(self):
         self._buffer_size = pow(1024, 2)  # This is defined my msgpack
