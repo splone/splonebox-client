@@ -22,11 +22,13 @@ from enum import Enum
 import libnacl
 import libnacl.utils
 
+
 class CryptoState(Enum):
     """CryptoState represents the state of the key agreement protocol"""
 
     INITIAL = 1
     ESTABLISHED = 2
+
 
 class Crypto:
     """Crypto stack implementation of splone crypto protocol
@@ -108,7 +110,6 @@ class Crypto:
                                                          self.serverlongtermpk,
                                                          self.clientshorttermsk)
         self.state = CryptoState.ESTABLISHED
-
 
     def crypto_write(self, data: bytes):
         """Create a client message packet consisting of:
