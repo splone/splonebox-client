@@ -119,6 +119,9 @@ class Connection:
         if not self._connected:
             raise BrokenPipeError("Connection has been closed")
 
+        if self.crypto_context.state != CryptoState.ESTABLISHED:
+            self.tunnelestablished_sem.acquire()
+
         boxed = self.crypto_context.crypto_write(msg)
 
         totalsent = 0

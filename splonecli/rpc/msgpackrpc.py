@@ -24,7 +24,6 @@ import msgpack
 from splonecli.rpc.connection import Connection
 from splonecli.rpc.message import Message, InvalidMessageError, MResponse, \
  MNotify
-from splonecli.rpc.crypto import CryptoState
 
 
 class MsgpackRpc:
@@ -55,8 +54,6 @@ class MsgpackRpc:
         :raises :BrokenPipeError if connection is not established
         :return: None
         """
-        if self._connection.crypto_context.state != CryptoState.ESTABLISHED:
-            self._connection.tunnelestablished_sem.acquire()
 
         logging.info("sending: \n" + msg.__str__())
         if msg is None:
