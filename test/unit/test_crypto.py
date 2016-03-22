@@ -36,8 +36,7 @@ class CryptoTest(unittest.TestCase):
         length, = struct.unpack("<Q", data[8:16])
 
         clear_msg = libnacl.crypto_box_open(data[56:length], nonceexpanded,
-                                            crypt.clientshorttermpk,
-                                            serversk)
+                                            crypt.clientshorttermpk, serversk)
 
         self.assertEqual(clear_msg, bytearray(64))
 
@@ -52,8 +51,8 @@ class CryptoTest(unittest.TestCase):
         nonce = crypt.crypto_random_mod(281474976710656)
         nonce_bin = struct.pack("<Q", nonce)
         nonce_exp = struct.pack("<16sQ", b"splonebox-server", nonce)
-        box = libnacl.crypto_box(serverpk, nonce_exp,
-                                 crypt.clientshorttermpk, serversk)
+        box = libnacl.crypto_box(serverpk, nonce_exp, crypt.clientshorttermpk,
+                                 serversk)
         data = b"".join([identifier, length, nonce_bin, box])
 
         crypt.crypto_tunnel_read(data)
@@ -83,8 +82,8 @@ class CryptoTest(unittest.TestCase):
         nonce = 0
         nonce_bin = struct.pack("<Q", nonce)
         nonce_exp = struct.pack("<16sQ", b"splonebox-server", nonce)
-        box = libnacl.crypto_box(serverpk, nonce_exp,
-                                 crypt.clientshorttermpk, serversk)
+        box = libnacl.crypto_box(serverpk, nonce_exp, crypt.clientshorttermpk,
+                                 serversk)
         data = b"".join([identifier, length, nonce_bin, box])
         with self.assertRaises(ValueError):
             crypt.crypto_tunnel_read(data)
@@ -105,8 +104,8 @@ class CryptoTest(unittest.TestCase):
         self.assertEqual(struct.unpack("<Q", msg[16:24])[0], crypt.nonce)
 
         nonce_exp = struct.pack("<16sQ", b"splonebox-client", crypt.nonce)
-        plain = libnacl.crypto_box_open(
-            msg[24:51], nonce_exp, crypt.clientshorttermpk, serversk)
+        plain = libnacl.crypto_box_open(msg[24:51], nonce_exp,
+                                        crypt.clientshorttermpk, serversk)
         self.assertEqual(data, plain)
 
     def test_crypto_read(self):
@@ -128,6 +127,34 @@ class CryptoTest(unittest.TestCase):
         msg = b"".join([identifier, length, nonce, box])
         content = crypt.crypto_read(msg)
         self.assertEqual(data, content)
+
+        # repeating nonce
+        msg = b"".join([identifier, length, nonce, box])
+        with self.assertRaises(ValueError):
+            crypt.crypto_read(msg)
+
+        # invalid identifier
+        crypt.received_nonce = 0
+        identifier = struct.pack("<8s", b"invalid")
+        msg = b"".join([identifier, length, nonce, box])
+        with self.assertRaises(ValueError):
+            crypt.crypto_read(msg)
+        identifier = struct.pack("<8s", b"rZQTd2nM")
+
+        # invalid length
+        crypt.received_nonce = 0
+        length = struct.pack("<Q", 1)
+        msg = b"".join([identifier, length, nonce, box])
+        with self.assertRaises(libnacl.CryptError):
+            crypt.crypto_read(msg)
+        length = struct.pack("<Q", 24 + len(box))
+
+        # Unmaching nonce
+        crypt.received_nonce = 0
+        nonce = struct.pack("<Q", 1111)
+        msg = b"".join([identifier, length, nonce, box])
+        with self.assertRaises(libnacl.CryptError):
+            crypt.crypto_read(msg)
 
     def test_crypto_nonce_update(self):
         key = "somekey"
