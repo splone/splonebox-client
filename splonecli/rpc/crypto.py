@@ -203,6 +203,9 @@ class Crypto:
     @staticmethod
     def load_key(path: str):
         """Load a key from a file"""
+        if not isinstance(path, str):
+            raise TypeError()
+
         stream = open(path, 'rb')
 
         return stream.read()
