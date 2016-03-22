@@ -75,14 +75,17 @@ class Connection:
         if listen:
             self.listen(msg_callback, new_thread=listen_on_new_thread)
 
+        logging.info("Preparing encryption..")
         tunnelpacket = self.crypto_context.crypto_tunnel()
 
         try:
             sent = self._socket.send(tunnelpacket)
             if sent == 0:
+                logging.info("Encryption could not be initialized!")
                 raise BrokenPipeError()
         except (OSError, BrokenPipeError):
             raise BrokenPipeError("Connection has been closed")
+        logging.info("Encryption initialized!")
 
     def listen(self, msg_callback, new_thread=True):
         """ Wrapper for the _listen function
