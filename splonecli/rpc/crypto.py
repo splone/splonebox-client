@@ -35,11 +35,12 @@ class Crypto:
     https://github.com/splone/splonebox-core/wiki/Crypto
     """
 
-    def __init__(self, serverlongtermpk=None,
+    def __init__(self,
+                 serverlongtermpk=None,
                  serverlongtermpk_path='.keys/server-long-term.pub'):
         self.state = CryptoState.INITIAL
 
-        if(serverlongtermpk is None):
+        if (serverlongtermpk is None):
             self.serverlongtermpk = self.load_key(serverlongtermpk_path)
         else:
             self.serverlongtermpk = serverlongtermpk
@@ -50,7 +51,7 @@ class Crypto:
         self.nonce = self.crypto_random_mod(281474976710656)
         self.received_nonce = 0
 
-    def crypto_tunnel(self):
+    def crypto_tunnel(self) -> bytes:
         """Create a client tunnel packet consisting of:
         * 8 bytes: the ASCII bytes "oqQN2kaT"
         * 8 bytes: packet length
@@ -74,14 +75,15 @@ class Crypto:
         nonce = struct.pack("<16sQ", b"splonebox-client", self.nonce)
         zeros = bytearray(64)
 
-        self.clientshorttermpk, self.clientshorttermsk = libnacl.crypto_box_keypair()
+        self.clientshorttermpk, \
+            self.clientshorttermsk = libnacl.crypto_box_keypair()
         box = libnacl.crypto_box(zeros, nonce, self.serverlongtermpk,
                                  self.clientshorttermsk)
 
         nonce = struct.pack("<Q", self.nonce)
 
-        return b"".join([identifier, length, nonce, self.clientshorttermpk,
-                         box])
+        return b"".join([identifier, length, nonce, self.clientshorttermpk, box
+                         ])
 
     def crypto_tunnel_read(self, data: bytes):
         """Read a server tunnel packet consisting of:
@@ -97,7 +99,8 @@ class Crypto:
             * 32 bytes: the server's short-term public key S'.
 
         :return: None
-        :raises: :CryptError on failure
+        :raises: :CryptError on decryption failure
+        :raises: :ValueError bad identifier/nonce
         """
         identifier, = struct.unpack("<8s", data[:8])
 
@@ -111,13 +114,12 @@ class Crypto:
         if nonce <= self.received_nonce:
             raise ValueError('Received nonce is bad')
 
-        self.servershorttermpk = libnacl.crypto_box_open(data[24:length],
-                                                         nonceexpanded,
-                                                         self.serverlongtermpk,
-                                                         self.clientshorttermsk)
+        self.servershorttermpk = libnacl.crypto_box_open(
+            data[24:length], nonceexpanded, self.serverlongtermpk,
+            self.clientshorttermsk)
         self.state = CryptoState.ESTABLISHED
 
-    def crypto_write(self, data: bytes):
+    def crypto_write(self, data: bytes) -> bytes:
         """Create a client message packet consisting of:
         * 8 bytes: the ASCII bytes "oqQN2kaM"
         * 8 bytes: packet length
@@ -144,7 +146,7 @@ class Crypto:
 
         return b"".join([identifier, length, nonce, box])
 
-    def crypto_read(self, data: bytes):
+    def crypto_read(self, data: bytes) -> bytes:
         """Read a server message packet consisting of:
         * 8 bytes: the ASCII bytes "rZQTd2nM"
         * 8 bytes: packet length
@@ -158,7 +160,8 @@ class Crypto:
             * m bytes: data
 
         :return: server message packet
-        :raises: :CryptError on failure
+        :raises: :CryptError on decryption failure
+        :raises: :ValueError bad identifier/nonce
         """
         identifier, = struct.unpack("<8s", data[:8])
 
@@ -172,8 +175,7 @@ class Crypto:
         if nonce <= self.received_nonce:
             raise ValueError('Received nonce is bad')
 
-        plain = libnacl.crypto_box_open(data[24:length],
-                                        nonceexpanded,
+        plain = libnacl.crypto_box_open(data[24:length], nonceexpanded,
                                         self.servershorttermpk,
                                         self.clientshorttermsk)
 
@@ -182,7 +184,7 @@ class Crypto:
         return plain
 
     @staticmethod
-    def crypto_random_mod(number: int):
+    def crypto_random_mod(number: int) -> int:
         """Generate a random random integer"""
         result = 0
 
@@ -201,8 +203,11 @@ class Crypto:
         self.nonce += 1
 
     @staticmethod
-    def load_key(path: str):
-        """Load a key from a file"""
+    def load_key(path: str) -> bytes:
+        """Load a key from a file
+        :raises :TypeError if path is not a string
+        :raises :IOError if file cannot be opened
+        """
         if not isinstance(path, str):
             raise TypeError()
 
