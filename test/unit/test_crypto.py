@@ -1,0 +1,167 @@
+import unittest
+import os
+import struct
+import libnacl
+
+from splonecli.rpc.crypto import Crypto, CryptoState
+
+
+def collect_tests(suite: unittest.TestSuite):
+    suite.addTest(CryptoTest("test_crypto_random_mod"))
+    suite.addTest(CryptoTest("test_load_key"))
+    suite.addTest(CryptoTest("test_crypto_tunnel"))
+    suite.addTest(CryptoTest("test_crypto_nonce_update"))
+    suite.addTest(CryptoTest("test_crypto_tunnel_read"))
+    suite.addTest(CryptoTest("test_crypto_write"))
+    suite.addTest(CryptoTest("test_crypto_read"))
+
+
+class CryptoTest(unittest.TestCase):
+    def test_crypto_tunnel(self):
+        serverpk, serversk = libnacl.crypto_box_keypair()
+        crypt = Crypto(serverlongtermpk=serverpk)
+
+        data = crypt.crypto_tunnel()
+
+        identifier, = struct.unpack("<8s", data[:8])
+        self.assertEqual(identifier.decode('ascii'), "oqQN2kaT")
+
+        nonce, = struct.unpack("<Q", data[16:24])
+        self.assertEqual(nonce, crypt.nonce)
+
+        clientpk = data[24:56]
+        self.assertEqual(clientpk, crypt.clientshorttermpk)
+
+        nonceexpanded = struct.pack("<16sQ", b"splonebox-client", nonce)
+        length, = struct.unpack("<Q", data[8:16])
+
+        clear_msg = libnacl.crypto_box_open(data[56:length], nonceexpanded,
+                                            crypt.clientshorttermpk,
+                                            serversk)
+
+        self.assertEqual(clear_msg, bytearray(64))
+
+    def test_crypto_tunnel_read(self):
+        serverpk, serversk = libnacl.crypto_box_keypair()
+        crypt = Crypto(serverlongtermpk=serverpk)
+        crypt.clientshorttermpk, \
+            crypt.clientshorttermsk = libnacl.crypto_box_keypair()
+
+        identifier = struct.pack("<8s", b"rZQTd2nT")
+        length = struct.pack("<Q", 72)
+        nonce = crypt.crypto_random_mod(281474976710656)
+        nonce_bin = struct.pack("<Q", nonce)
+        nonce_exp = struct.pack("<16sQ", b"splonebox-server", nonce)
+        box = libnacl.crypto_box(serverpk, nonce_exp,
+                                 crypt.clientshorttermpk, serversk)
+        data = b"".join([identifier, length, nonce_bin, box])
+
+        crypt.crypto_tunnel_read(data)
+        self.assertEqual(CryptoState.ESTABLISHED, crypt.state)
+
+        crypt.state = CryptoState.INITIAL
+
+        # invalid message length
+        length = struct.pack("<Q", 20)
+        data = b"".join([identifier, length, nonce_bin, box])
+        with self.assertRaises(libnacl.CryptError):
+            crypt.crypto_tunnel_read(data)
+        self.assertEqual(CryptoState.INITIAL, crypt.state)
+
+        length = struct.pack("<Q", 72)
+
+        # invalid identifier
+        identifier = struct.pack("<8s", b"invalid")
+        data = b"".join([identifier, length, nonce_bin, box])
+        with self.assertRaises(ValueError):
+            crypt.crypto_tunnel_read(data)
+        self.assertEqual(CryptoState.INITIAL, crypt.state)
+
+        identifier = struct.pack("<8s", b"rZQTd2nT")
+
+        # invalid nonce
+        nonce = 0
+        nonce_bin = struct.pack("<Q", nonce)
+        nonce_exp = struct.pack("<16sQ", b"splonebox-server", nonce)
+        box = libnacl.crypto_box(serverpk, nonce_exp,
+                                 crypt.clientshorttermpk, serversk)
+        data = b"".join([identifier, length, nonce_bin, box])
+        with self.assertRaises(ValueError):
+            crypt.crypto_tunnel_read(data)
+        self.assertEqual(CryptoState.INITIAL, crypt.state)
+
+    def test_crypto_write(self):
+        serverpk, serversk = libnacl.crypto_box_keypair()
+        crypt = Crypto(serverlongtermpk=serverpk)
+        crypt.clientshorttermpk, \
+            crypt.clientshorttermsk = libnacl.crypto_box_keypair()
+        crypt.servershorttermpk = serverpk
+
+        crypt.state = CryptoState.ESTABLISHED
+        data = b'Hello World'
+        msg = crypt.crypto_write(data)
+        self.assertEqual(struct.unpack("<8s", msg[:8])[0], b"oqQN2kaM")
+        self.assertEqual(struct.unpack("<Q", msg[8:16])[0], 51)
+        self.assertEqual(struct.unpack("<Q", msg[16:24])[0], crypt.nonce)
+
+        nonce_exp = struct.pack("<16sQ", b"splonebox-client", crypt.nonce)
+        plain = libnacl.crypto_box_open(
+            msg[24:51], nonce_exp, crypt.clientshorttermpk, serversk)
+        self.assertEqual(data, plain)
+
+    def test_crypto_read(self):
+        serverpk, serversk = libnacl.crypto_box_keypair()
+        crypt = Crypto(serverlongtermpk=serverpk)
+        crypt.clientshorttermpk, \
+            crypt.clientshorttermsk = libnacl.crypto_box_keypair()
+        crypt.servershorttermpk = serverpk
+        crypt.state = CryptoState.ESTABLISHED
+
+        data = b'Hello World'
+        identifier = struct.pack("<8s", b"rZQTd2nM")
+        nonce = struct.pack("<16sQ", b"splonebox-server", 1234)
+        box = libnacl.crypto_box(data, nonce, crypt.clientshorttermpk,
+                                 serversk)
+        nonce = struct.pack("<Q", 1234)
+        length = struct.pack("<Q", 24 + len(box))
+
+        msg = b"".join([identifier, length, nonce, box])
+        content = crypt.crypto_read(msg)
+        self.assertEqual(data, content)
+
+    def test_crypto_nonce_update(self):
+        key = "somekey"
+        path = '.splonecli_temp_test_file'
+        f = open(path, 'w')
+        f.write(key)
+        f.close()
+
+        crypt = Crypto(serverlongtermpk_path=path)
+        os.remove(path)
+
+        nonce = crypt.nonce
+        crypt.crypto_nonce_update()
+        self.assertEqual(nonce + 1, crypt.nonce)
+
+    def test_crypto_random_mod(self):
+        result = Crypto.crypto_random_mod(100)
+        self.assertTrue(result < 100)
+
+        result = Crypto.crypto_random_mod(-1)
+        self.assertEqual(result, 0)
+
+        with self.assertRaises(TypeError):
+            result = Crypto.crypto_random_mod("Hello")
+
+    def test_load_key(self):
+        path = '.splonecli_temp_test_file'
+        f = open(path, 'w')
+        f.write('something')
+        f.close()
+
+        read = Crypto.load_key(path)
+        self.assertEqual(read, b'something')
+        os.remove(path)
+
+        with self.assertRaises(TypeError):
+            Crypto.load_key(2)

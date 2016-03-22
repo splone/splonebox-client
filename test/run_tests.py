@@ -25,7 +25,7 @@ from test.functional import test_remote_calls, test_local_call, \
  test_complete_call
 from test.unit import test_connection, test_message, \
  test_msgpackrpc, test_plugin, test_remotefunction, test_result, \
- test_apicall
+ test_apicall, test_crypto
 
 # create test suite
 suite = unittest.TestSuite()
@@ -41,6 +41,7 @@ test_result.collect_tests(suite)
 test_message.collect_tests(suite)
 test_msgpackrpc.collect_tests(suite)
 test_connection.collect_tests(suite)
+test_crypto.collect_tests(suite)
 # functional
 test_remote_calls.collect_tests(suite)
 test_local_call.collect_tests(suite)
