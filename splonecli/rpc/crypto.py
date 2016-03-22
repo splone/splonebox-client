@@ -35,9 +35,15 @@ class Crypto:
     https://github.com/splone/splonebox-core/wiki/Crypto
     """
 
-    def __init__(self):
+    def __init__(self, serverlongtermpk=None,
+                 serverlongtermpk_path='.keys/server-long-term.pub'):
         self.state = CryptoState.INITIAL
-        self.serverlongtermpk = self.load_key('.keys/server-long-term.pub')
+
+        if(serverlongtermpk is None):
+            self.serverlongtermpk = self.load_key(serverlongtermpk_path)
+        else:
+            self.serverlongtermpk = serverlongtermpk
+
         self.clientshorttermsk = ""
         self.clientshorttermpk = ""
         self.servershorttermpk = ""
