@@ -7,7 +7,7 @@ from splonecli.rpc.crypto import Crypto, CryptoState
 
 
 def collect_tests(suite: unittest.TestSuite):
-    suite.addTest(CryptoTest("test_crypto_random_mod"))
+    suite.addTest(CryptoTest("test_crypto_generate_nonce"))
     suite.addTest(CryptoTest("test_load_key"))
     suite.addTest(CryptoTest("test_crypto_tunnel"))
     suite.addTest(CryptoTest("test_crypto_nonce_update"))
@@ -28,6 +28,7 @@ class CryptoTest(unittest.TestCase):
 
         nonce, = struct.unpack("<Q", data[16:24])
         self.assertEqual(nonce, crypt.nonce)
+        self.assertTrue(nonce % 2 == 1)
 
         clientpk = data[24:56]
         self.assertEqual(clientpk, crypt.clientshorttermpk)
@@ -48,7 +49,7 @@ class CryptoTest(unittest.TestCase):
 
         identifier = struct.pack("<8s", b"rZQTd2nT")
         length = struct.pack("<Q", 72)
-        nonce = crypt.crypto_random_mod(281474976710656)
+        nonce = crypt.crypto_generate_nonce(281474976710656)+1
         nonce_bin = struct.pack("<Q", nonce)
         nonce_exp = struct.pack("<16sQ", b"splonebox-server", nonce)
         box = libnacl.crypto_box(serverpk, nonce_exp, crypt.clientshorttermpk,
@@ -151,9 +152,16 @@ class CryptoTest(unittest.TestCase):
 
         # Unmaching nonce
         crypt.received_nonce = 0
-        nonce = struct.pack("<Q", 1111)
+        nonce = struct.pack("<Q", 1114)
         msg = b"".join([identifier, length, nonce, box])
         with self.assertRaises(libnacl.CryptError):
+            crypt.crypto_read(msg)
+
+        # Invalid nonce
+        crypt.received_nonce = 0
+        nonce = struct.pack("<Q", 1111)
+        msg = b"".join([identifier, length, nonce, box])
+        with self.assertRaises(ValueError):
             crypt.crypto_read(msg)
 
     def test_crypto_nonce_update(self):
@@ -168,17 +176,19 @@ class CryptoTest(unittest.TestCase):
 
         nonce = crypt.nonce
         crypt.crypto_nonce_update()
-        self.assertEqual(nonce + 1, crypt.nonce)
+        self.assertEqual(nonce + 2, crypt.nonce)
+        self.assertTrue(crypt.nonce % 2 == 1)
 
-    def test_crypto_random_mod(self):
-        result = Crypto.crypto_random_mod(100)
-        self.assertTrue(result < 100)
+    def test_crypto_generate_nonce(self):
+        result = Crypto.crypto_generate_nonce(100)
+        self.assertLess(result, 100)
+        self.assertTrue(result % 2 == 1)
 
-        result = Crypto.crypto_random_mod(-1)
-        self.assertEqual(result, 0)
+        result = Crypto.crypto_generate_nonce(-1)
+        self.assertEqual(result, 1)
 
         with self.assertRaises(TypeError):
-            result = Crypto.crypto_random_mod("Hello")
+            result = Crypto.crypto_generate_nonce("Hello")
 
     def test_load_key(self):
         path = '.splonecli_temp_test_file'
