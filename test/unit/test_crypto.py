@@ -28,6 +28,7 @@ class CryptoTest(unittest.TestCase):
 
         nonce, = struct.unpack("<Q", data[16:24])
         self.assertEqual(nonce, crypt.nonce)
+        self.assertTrue(nonce % 2 == 1)
 
         clientpk = data[24:56]
         self.assertEqual(clientpk, crypt.clientshorttermpk)
@@ -102,7 +103,7 @@ class CryptoTest(unittest.TestCase):
         self.assertEqual(struct.unpack("<8s", msg[:8])[0], b"oqQN2kaM")
         self.assertEqual(struct.unpack("<Q", msg[8:16])[0], 51)
         self.assertEqual(struct.unpack("<Q", msg[16:24])[0], crypt.nonce)
-
+        self.assertTrue(crypt.nonce % 2 == 1)
         nonce_exp = struct.pack("<16sQ", b"splonebox-client", crypt.nonce)
         plain = libnacl.crypto_box_open(msg[24:51], nonce_exp,
                                         crypt.clientshorttermpk, serversk)
@@ -158,16 +159,11 @@ class CryptoTest(unittest.TestCase):
 
     def test_crypto_nonce_update(self):
         key = "somekey"
-        path = '.splonecli_temp_test_file'
-        f = open(path, 'w')
-        f.write(key)
-        f.close()
-
-        crypt = Crypto(serverlongtermpk_path=path)
-        os.remove(path)
+        crypt = Crypto(serverlongtermpk=key)
 
         nonce = crypt.nonce
         crypt.crypto_nonce_update()
+        self.assertTrue(nonce % 2 == 1)
         self.assertEqual(nonce + 2, crypt.nonce)
 
     def test_crypto_random_mod(self):
