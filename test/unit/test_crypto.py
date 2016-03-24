@@ -48,7 +48,7 @@ class CryptoTest(unittest.TestCase):
 
         identifier = struct.pack("<8s", b"rZQTd2nT")
         length = struct.pack("<Q", 72)
-        nonce = crypt.crypto_random_mod(281474976710656)
+        nonce = 1234
         nonce_bin = struct.pack("<Q", nonce)
         nonce_exp = struct.pack("<16sQ", b"splonebox-server", nonce)
         box = libnacl.crypto_box(serverpk, nonce_exp, crypt.clientshorttermpk,
@@ -151,7 +151,7 @@ class CryptoTest(unittest.TestCase):
 
         # Unmaching nonce
         crypt.received_nonce = 0
-        nonce = struct.pack("<Q", 1111)
+        nonce = struct.pack("<Q", 1112)
         msg = b"".join([identifier, length, nonce, box])
         with self.assertRaises(libnacl.CryptError):
             crypt.crypto_read(msg)

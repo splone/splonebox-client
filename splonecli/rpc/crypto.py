@@ -49,6 +49,7 @@ class Crypto:
         self.clientshorttermpk = ""
         self.servershorttermpk = ""
         self.nonce = self.crypto_random_mod(281474976710656)
+        self.nonce += 1 if self.nonce % 2 == 0 else 0
         self.received_nonce = 0
 
     def crypto_tunnel(self) -> bytes:
@@ -111,7 +112,7 @@ class Crypto:
         nonce, = struct.unpack("<Q", data[16:24])
         nonceexpanded = struct.pack("<16sQ", b"splonebox-server", nonce)
 
-        if nonce <= self.received_nonce:
+        if nonce <= self.received_nonce or nonce % 2 == 1:
             raise ValueError('Received nonce is bad')
 
         self.servershorttermpk = libnacl.crypto_box_open(
@@ -172,7 +173,7 @@ class Crypto:
         nonce, = struct.unpack("<Q", data[16:24])
         nonceexpanded = struct.pack("<16sQ", b"splonebox-server", nonce)
 
-        if nonce <= self.received_nonce:
+        if nonce <= self.received_nonce or nonce % 2 == 1:
             raise ValueError('Received nonce is bad')
 
         plain = libnacl.crypto_box_open(data[24:length], nonceexpanded,
