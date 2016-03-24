@@ -48,7 +48,7 @@ class Crypto:
         self.clientshorttermsk = ""
         self.clientshorttermpk = ""
         self.servershorttermpk = ""
-        self.nonce = self.crypto_generate_nonce(281474976710656)
+        self.nonce = self.crypto_random_mod(281474976710656)
         self.received_nonce = 0
 
     def crypto_tunnel(self) -> bytes:
@@ -111,7 +111,7 @@ class Crypto:
         nonce, = struct.unpack("<Q", data[16:24])
         nonceexpanded = struct.pack("<16sQ", b"splonebox-server", nonce)
 
-        if nonce <= self.received_nonce or nonce % 2 == 1:
+        if nonce <= self.received_nonce:
             raise ValueError('Received nonce is bad')
 
         self.servershorttermpk = libnacl.crypto_box_open(
@@ -172,7 +172,7 @@ class Crypto:
         nonce, = struct.unpack("<Q", data[16:24])
         nonceexpanded = struct.pack("<16sQ", b"splonebox-server", nonce)
 
-        if nonce <= self.received_nonce or nonce % 2 == 1:
+        if nonce <= self.received_nonce:
             raise ValueError('Received nonce is bad')
 
         plain = libnacl.crypto_box_open(data[24:length], nonceexpanded,
@@ -184,24 +184,23 @@ class Crypto:
         return plain
 
     @staticmethod
-    def crypto_generate_nonce(number: int) -> int:
-        """Generate a random random nonce (even) """
+    def crypto_random_mod(number: int) -> int:
+        """Generate a random random integer"""
         result = 0
 
         if number <= 1:
-            return 1
+            return 0
 
         random = libnacl.randombytes(32)
 
         for j in range(0, 32):
             result = (result * 256 + random[j]) % number
 
-        result = result + 1 if result % 2 == 0 else result
         return result
 
     def crypto_nonce_update(self):
         """Increment the nonce"""
-        self.nonce += 2
+        self.nonce += 1
 
     @staticmethod
     def load_key(path: str) -> bytes:
