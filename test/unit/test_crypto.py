@@ -168,7 +168,7 @@ class CryptoTest(unittest.TestCase):
 
         nonce = crypt.nonce
         crypt.crypto_nonce_update()
-        self.assertEqual(nonce + 1, crypt.nonce)
+        self.assertEqual(nonce + 2, crypt.nonce)
 
     def test_crypto_random_mod(self):
         result = Crypto.crypto_random_mod(100)

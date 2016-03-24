@@ -201,7 +201,7 @@ class Crypto:
 
     def crypto_nonce_update(self):
         """Increment the nonce"""
-        self.nonce += 1
+        self.nonce += 2
 
     @staticmethod
     def load_key(path: str) -> bytes:
