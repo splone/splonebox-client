@@ -164,21 +164,33 @@ class Connection:
             except (BrokenPipeError, OSError, ConnectionResetError):
                 self.is_listening.release()
                 if self._connected:
-                    logging.error("Connection was closed by server!")
+                    logging.warning("Connection was closed by server!")
                     self._connected = False
                     raise  # only raise on unintentional disconnect
                 return
 
+            self._recv_buffer += data
+            msg_length, = struct.unpack("<Q", self._recv_buffer[8:16])
+            recv_length = len(self._recv_buffer)
+
             if self.crypto_context.state == CryptoState.INITIAL:
-                self.crypto_context.crypto_tunnel_read(data)
-                if self.crypto_context.state == CryptoState.ESTABLISHED:
-                    self.tunnelestablished_sem.release()
+                if recv_length >= msg_length:
+                    self.crypto_context.crypto_tunnel_read(
+                        self._recv_buffer[:msg_length])
+                    self._recv_buffer = self._recv_buffer[msg_length:]
+
+                    if self.crypto_context.state == CryptoState.ESTABLISHED:
+                        self.tunnelestablished_sem.release()
                 continue
 
-            plain = self.crypto_context.crypto_read(data)
-
-            # let the callback handle the received data
-            msg_callback(plain)
+            while recv_length >= msg_length:
+                plain = self.crypto_context.crypto_read(
+                    self._recv_buffer[:msg_length])
+                self._recv_buffer = self._recv_buffer[msg_length:]
+                recv_length = len(self._recv_buffer)
+                msg_callback(plain)
+                if recv_length > 15:
+                    msg_length, = struct.unpack("<Q", self._recv_buffer[8:16])
 
         self.is_listening.release()
 

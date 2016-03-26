@@ -4,6 +4,7 @@ import libnacl
 import unittest.mock as mock
 import struct
 from threading import Thread
+from multiprocessing import Lock
 
 from splonecli.rpc.connection import Connection
 from splonecli.rpc.crypto import CryptoState
@@ -68,15 +69,74 @@ class ConnectionTest(unittest.TestCase):
 
         # this queue simulates the socket receive function and blocks
         # until something is put into the queue
-        mc = mock.Mock()
-        mock_callback = mock.create_autospec(mc, return_value=b'123')
+        # mc = mock.Mock() mock.create_autospec(mc, return_value=b'123')
+        execute_lock = Lock()
+        execute_lock.acquire()
+        mock_callback = mock.Mock()
+
+        def foo(data):
+            mock_callback(data)
+            execute_lock.release()
+
         socket_recv_q = mocks.connection_socket_fake_recv(con)
-        thread = Thread(target=con._listen, args=(mock_callback, ))
+        thread = Thread(target=con._listen, args=(foo, ))
         thread.start()
 
         socket_recv_q.put(msg)
+        execute_lock.acquire()
         mock_callback.assert_called_with(b'123')
 
+        # simulates a message arriving in two pieces
+        mock_callback.reset_mock()
+        data = bytearray(100)
+        nonce_exp = struct.pack("<16sQ", b"splonebox-server", 8888)
+        nonce = struct.pack("<Q", 8888)
+        box = libnacl.crypto_box(
+            data, nonce_exp, con.crypto_context.clientshorttermpk, serversk)
+        length = struct.pack("<Q", 24 + len(box))
+        msg = b"".join([identifier, length, nonce, box])
+
+        size = 24 + len(box)
+        socket_recv_q.put(msg[:int(size/2)])
+        socket_recv_q.put(msg[int(size/2):size])
+        execute_lock.acquire()
+        mock_callback.assert_called_with(data)
+
+        # simulates two messages arriving at the same time
+        mock_callback.reset_mock()
+        data1 = b"message1"
+        nonce_exp = struct.pack("<16sQ", b"splonebox-server", 8890)
+        nonce = struct.pack("<Q", 8890)
+        box = libnacl.crypto_box(
+            data1, nonce_exp, con.crypto_context.clientshorttermpk, serversk)
+        length = struct.pack("<Q", 24 + len(box))
+        msg1 = b"".join([identifier, length, nonce, box])
+
+        data2 = b"message2"
+        nonce_exp = struct.pack("<16sQ", b"splonebox-server", 8892)
+        nonce = struct.pack("<Q", 8892)
+        box = libnacl.crypto_box(
+            data2, nonce_exp, con.crypto_context.clientshorttermpk, serversk)
+        length = struct.pack("<Q", 24 + len(box))
+        msg2 = b"".join([identifier, length, nonce, box])
+
+        socket_recv_q.put(msg1+msg2)
+
+        execute_lock.acquire()
+        mock_callback.assert_called_with(data1)
+        mock_callback.reset_mock()
+
+        execute_lock.acquire()
+        mock_callback.assert_called_with(data2)
+        mock_callback.reset_mock()
+
         # Stop connection thread
-        con._connected = False
+        con._connected = False  # disconnect
+        socket_recv_q.put(b'')  # terminate the connection
         thread.join()
+
+        # simulate unexpected termination
+        socket_recv_q.put(b'')
+        con._connected = True
+        with self.assertRaises(BrokenPipeError):
+            con._listen(foo)
