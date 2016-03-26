@@ -170,8 +170,9 @@ class Connection:
                 return
 
             self._recv_buffer += data
-            msg_length, = struct.unpack("<Q", self._recv_buffer[8:16])
             recv_length = len(self._recv_buffer)
+            if recv_length > 15:
+                msg_length, = struct.unpack("<Q", self._recv_buffer[8:16])
 
             if self.crypto_context.state == CryptoState.INITIAL:
                 if recv_length >= msg_length:
