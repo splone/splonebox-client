@@ -19,6 +19,7 @@ see <http://www.gnu.org/licenses/>.
 
 import logging
 import socket
+import struct
 from threading import Thread
 from multiprocessing import Lock
 from multiprocessing import Semaphore
@@ -27,15 +28,26 @@ from splonecli.rpc.crypto import CryptoState
 
 
 class Connection:
-    def __init__(self):
+    def __init__(self,
+                 serverlongtermpk=None,
+                 serverlongtermpk_path='.keys/server-long-term.pub'):
+        """
+        :param serverlongtermpk: The server's longterm key
+        (if set, path is ignored!)
+        :param serverlongtermpk_path: path to file containing the
+        server's longterm key
+        """
         self._buffer_size = pow(1024, 2)  # This is defined my msgpack
+        self._recv_buffer = b''
         self._ip = None
         self._port = None
         self._listen_thread = None
         self._socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self._connected = False
         self.is_listening = Lock()
-        self.crypto_context = Crypto()
+        self.crypto_context = Crypto(
+            serverlongtermpk=serverlongtermpk,
+            serverlongtermpk_path=serverlongtermpk_path)
         self.tunnelestablished_sem = Semaphore(value=0)
 
     def connect(self,

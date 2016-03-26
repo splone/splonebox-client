@@ -27,8 +27,19 @@ from splonecli.rpc.message import Message, InvalidMessageError, MResponse, \
 
 
 class MsgpackRpc:
-    def __init__(self):
-        self._connection = Connection()
+    def __init__(self,
+                 serverlongtermpk=None,
+                 serverlongtermpk_path='.keys/server-long-term.pub'):
+        """
+        :param serverlongtermpk: The server's longterm key
+        (if set, path is ignored!)
+        :param serverlongtermpk_path: path to file containing the
+        server's longterm key
+        """
+        self._connection = Connection(
+            serverlongtermpk=serverlongtermpk,
+            serverlongtermpk_path=serverlongtermpk_path)
+
         self._dispatcher = {}
         self._response_callbacks = {}
         self._unpacker = msgpack.Unpacker()
