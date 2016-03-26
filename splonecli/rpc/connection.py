@@ -19,7 +19,6 @@ see <http://www.gnu.org/licenses/>.
 
 import logging
 import socket
-import struct
 from threading import Thread
 from multiprocessing import Lock
 from multiprocessing import Semaphore
@@ -38,7 +37,6 @@ class Connection:
         server's longterm key
         """
         self._buffer_size = pow(1024, 2)  # This is defined my msgpack
-        self._recv_buffer = b''
         self._ip = None
         self._port = None
         self._listen_thread = None
