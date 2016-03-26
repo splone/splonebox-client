@@ -38,7 +38,6 @@ class Connection:
         server's longterm key
         """
         self._buffer_size = pow(1024, 2)  # This is defined my msgpack
-        self._recv_buffer = b''
         self._ip = None
         self._port = None
         self._listen_thread = None
@@ -155,6 +154,7 @@ class Connection:
         :param msg_callback callback function with one argument (:Message)
         :raises: ConnectionError if connection is unexpectedly terminated
         """
+        recv_buffer = b''
         self.is_listening.acquire(True)
         while self._connected:
             try:
@@ -169,16 +169,16 @@ class Connection:
                     raise  # only raise on unintentional disconnect
                 return
 
-            self._recv_buffer += data
-            recv_length = len(self._recv_buffer)
+            recv_buffer += data
+            recv_length = len(recv_buffer)
             if recv_length > 15:
-                msg_length, = struct.unpack("<Q", self._recv_buffer[8:16])
+                msg_length, = struct.unpack("<Q", recv_buffer[8:16])
 
             if self.crypto_context.state == CryptoState.INITIAL:
                 if recv_length >= msg_length:
                     self.crypto_context.crypto_tunnel_read(
-                        self._recv_buffer[:msg_length])
-                    self._recv_buffer = self._recv_buffer[msg_length:]
+                        recv_buffer[:msg_length])
+                    recv_buffer = recv_buffer[msg_length:]
 
                     if self.crypto_context.state == CryptoState.ESTABLISHED:
                         self.tunnelestablished_sem.release()
@@ -186,12 +186,12 @@ class Connection:
 
             while recv_length >= msg_length:
                 plain = self.crypto_context.crypto_read(
-                    self._recv_buffer[:msg_length])
-                self._recv_buffer = self._recv_buffer[msg_length:]
-                recv_length = len(self._recv_buffer)
+                    recv_buffer[:msg_length])
+                recv_buffer = recv_buffer[msg_length:]
+                recv_length = len(recv_buffer)
                 msg_callback(plain)
                 if recv_length > 15:
-                    msg_length, = struct.unpack("<Q", self._recv_buffer[8:16])
+                    msg_length, = struct.unpack("<Q", recv_buffer[8:16])
 
         self.is_listening.release()
 
