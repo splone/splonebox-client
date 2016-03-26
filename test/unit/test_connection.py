@@ -1,9 +1,12 @@
 import socket
 import unittest
+import libnacl
 import unittest.mock as mock
-from _thread import start_new_thread
+import struct
+from threading import Thread
 
 from splonecli.rpc.connection import Connection
+from splonecli.rpc.crypto import CryptoState
 from test import mocks
 
 
@@ -15,7 +18,7 @@ def collect_tests(suite: unittest.TestSuite):
 
 class ConnectionTest(unittest.TestCase):
     def test_connect(self):
-        con = Connection()
+        con = Connection(libnacl.crypto_box_keypair()[0])
         mock_socket = mocks.connection_socket(con)
 
         con.connect("127.0.0.1", 6666, None, listen=False)
@@ -39,25 +42,41 @@ class ConnectionTest(unittest.TestCase):
             con.connect("127.0.0.1", "bla", None, listen=False)
 
     def test_send_message(self):
-        con = Connection()
+        con = Connection(libnacl.crypto_box_keypair()[0])
 
         with self.assertRaises(BrokenPipeError):
             con.send_message(b'123')
 
     def test_listen(self):
-        con = Connection()
+        serverpk, serversk = libnacl.crypto_box_keypair()
+        con = Connection(serverlongtermpk=serverpk)
+        con.crypto_context.state = CryptoState.ESTABLISHED
         con._connected = True
+        con.crypto_context.servershorttermpk = serverpk
+        con.crypto_context.clientshorttermpk, \
+            con.crypto_context.clientshorttermsk = libnacl.crypto_box_keypair()
 
-        mc = mock.Mock()
-        mock_callback = mock.create_autospec(mc, return_value=b'123')
+        # prepare single valid message
+        data = b'123'
+        identifier = struct.pack("<8s", b"rZQTd2nM")
+        nonce_exp = struct.pack("<16sQ", b"splonebox-server", 4444)
+        box = libnacl.crypto_box(
+            data, nonce_exp, con.crypto_context.clientshorttermpk, serversk)
+        nonce = struct.pack("<Q", 4444)
+        length = struct.pack("<Q", 24 + len(box))
+        msg = b"".join([identifier, length, nonce, box])
 
         # this queue simulates the socket receive function and blocks
         # until something is put into the queue
+        mc = mock.Mock()
+        mock_callback = mock.create_autospec(mc, return_value=b'123')
         socket_recv_q = mocks.connection_socket_fake_recv(con)
+        thread = Thread(target=con._listen, args=(mock_callback, ))
+        thread.start()
 
-        start_new_thread(con._listen, (mock_callback, ))
-        socket_recv_q.put(b'123')
+        socket_recv_q.put(msg)
         mock_callback.assert_called_with(b'123')
-        con._connected = False
 
-        pass
+        # Stop connection thread
+        con._connected = False
+        thread.join()

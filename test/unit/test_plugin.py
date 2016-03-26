@@ -36,7 +36,7 @@ def collect_tests(suite: unittest.TestSuite):
 
 class PluginTest(unittest.TestCase):
     def test_register(self):
-        plug = Plugin("abc", "foo", "bar", "bob", "alice", debug=False)
+        plug = Plugin("abc", "foo", "bar", "bob", "alice", serverlongtermpk="")
 
         rpc_send_mock = mocks.plug_rpc_send(plug)
         plug.register(blocking=False)
@@ -55,7 +55,7 @@ class PluginTest(unittest.TestCase):
             len(call_args.arguments[1]), 0)  # no function registered
 
     def test_connect(self):
-        plug = Plugin("abc", "foo", "bar", "bob", "alice")
+        plug = Plugin("abc", "foo", "bar", "bob", "alice", serverlongtermpk="")
         connect_rpc_mock = mocks.plug_rpc_connect(plug)
 
         plug.connect("hostname", 1234)
@@ -64,7 +64,7 @@ class PluginTest(unittest.TestCase):
     # Note: connect is just a wrapper for Connection.connect()
 
     def test_run(self):
-        plug = Plugin("abc", "foo", "bar", "bob", "alice")
+        plug = Plugin("abc", "foo", "bar", "bob", "alice", serverlongtermpk="")
 
         rpc_send_mock = mocks.plug_rpc_send(plug)
 
@@ -80,7 +80,7 @@ class PluginTest(unittest.TestCase):
         pass
 
     def test_handle_run(self):
-        plug = Plugin("abc", "foo", "bar", "bob", "alice")
+        plug = Plugin("abc", "foo", "bar", "bob", "alice", serverlongtermpk="")
         send = mocks.plug_rpc_send(plug)  # catch results/responses
 
         mock = Mock()
@@ -120,7 +120,7 @@ class PluginTest(unittest.TestCase):
         RemoteFunction.remote_functions = {}
 
     def test_handle_response(self):
-        plug = Plugin("abc", "foo", "bar", "bob", "alice")
+        plug = Plugin("abc", "foo", "bar", "bob", "alice", serverlongtermpk="")
         send_mock = mocks.plug_rpc_send(plug)
 
         result = plug.register(blocking=False)

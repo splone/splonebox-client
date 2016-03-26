@@ -34,7 +34,7 @@ def collect_tests(suite: unittest.TestSuite):
 
 class MsgpackRpcTest(unittest.TestCase):
     def test_send(self):
-        rpc = MsgpackRpc()
+        rpc = MsgpackRpc(serverlongtermpk="")
         con_send_mock = mocks.rpc_connection_send(rpc)
         m1 = MRequest()
 
@@ -62,7 +62,7 @@ class MsgpackRpcTest(unittest.TestCase):
 
     # noinspection PyProtectedMember
     def test_message_callback(self):
-        rpc = MsgpackRpc()
+        rpc = MsgpackRpc(serverlongtermpk="")
 
         dispatch = mocks.rpc_dispatch(rpc, "run")
         m_req = MRequest()
@@ -103,7 +103,7 @@ class MsgpackRpcTest(unittest.TestCase):
                          "Could not handle request! req")
 
     def test_handle_response(self):
-        rpc = MsgpackRpc()
+        rpc = MsgpackRpc(serverlongtermpk="")
         response = MResponse(1234)
         response.response = []
         mock_callback = Mock()
