@@ -23,8 +23,9 @@ import struct
 from threading import Thread
 from multiprocessing import Lock
 from multiprocessing import Semaphore
+from libnacl import CryptError
+
 from splonecli.rpc.crypto import Crypto
-from splonecli.rpc.crypto import CryptoState
 
 
 class Connection:
@@ -81,22 +82,40 @@ class Connection:
         self._socket.connect((self._ip, self._port))
         logging.info("Connected to: " + self._ip + ":" + port.__str__())
 
+        logging.info("Preparing encryption..")
+        self._init_crypto()
+        logging.info("Encryption initialized!")
+
+        self.tunnelestablished_sem.release()
         self._connected = True
 
         if listen:
             self.listen(msg_callback, new_thread=listen_on_new_thread)
 
-        logging.info("Preparing encryption..")
+    def _init_crypto(self):
         tunnelpacket = self.crypto_context.crypto_tunnel()
-
         try:
+            logging.info("Sending tunnel packet...")
             sent = self._socket.send(tunnelpacket)
             if sent == 0:
                 logging.info("Encryption could not be initialized!")
                 raise BrokenPipeError()
         except (OSError, BrokenPipeError):
             raise BrokenPipeError("Connection has been closed")
-        logging.info("Encryption initialized!")
+
+        logging.info("Waiting for server tunnel packet...")
+        data = b''
+        data_len = 0
+        while not self.crypto_context.crypto_established():
+            data += self._socket.recv(self._buffer_size)
+            if len(data) == data_len:
+                raise BrokenPipeError("Connection has been closed")
+
+            data_len = len(data)
+            if data_len > 15:
+                msg_length, = struct.unpack("<Q", data[8:16])
+                if len(data) == msg_length:
+                    self.crypto_context.crypto_tunnel_read(data)
 
     def listen(self, msg_callback, new_thread=True):
         """ Wrapper for the _listen function
@@ -112,9 +131,9 @@ class Connection:
             self._listen_thread = Thread(target=self._listen,
                                          args=(msg_callback, ))
             self._listen_thread.start()
-            logging.info("Startet listening..")
+            logging.info("Start listening..")
         else:
-            logging.info("Startet listening..")
+            logging.info("Start listening..")
             self._listen(msg_callback)
 
     def disconnect(self):
@@ -133,7 +152,7 @@ class Connection:
         if not self._connected:
             raise BrokenPipeError("Connection has been closed")
 
-        if self.crypto_context.state != CryptoState.ESTABLISHED:
+        if not self.crypto_context.crypto_established():
             self.tunnelestablished_sem.acquire()
 
         boxed = self.crypto_context.crypto_write(msg)
@@ -174,24 +193,18 @@ class Connection:
             if recv_length > 15:
                 msg_length, = struct.unpack("<Q", recv_buffer[8:16])
 
-            if self.crypto_context.state == CryptoState.INITIAL:
-                if recv_length >= msg_length:
-                    self.crypto_context.crypto_tunnel_read(
-                        recv_buffer[:msg_length])
+                while recv_length >= msg_length:
+                    try:
+                        plain = self.crypto_context.crypto_read(
+                            recv_buffer[:msg_length])
+                        msg_callback(plain)
+                    except (ValueError, CryptError):
+                        logging.warning("Unable to decrypt received msg")
+
                     recv_buffer = recv_buffer[msg_length:]
-
-                    if self.crypto_context.state == CryptoState.ESTABLISHED:
-                        self.tunnelestablished_sem.release()
-                continue
-
-            while recv_length >= msg_length:
-                plain = self.crypto_context.crypto_read(
-                    recv_buffer[:msg_length])
-                recv_buffer = recv_buffer[msg_length:]
-                recv_length = len(recv_buffer)
-                msg_callback(plain)
-                if recv_length > 15:
-                    msg_length, = struct.unpack("<Q", recv_buffer[8:16])
+                    recv_length = len(recv_buffer)
+                    if recv_length > 15:
+                        msg_length, = struct.unpack("<Q", recv_buffer[8:16])
 
         self.is_listening.release()
 
