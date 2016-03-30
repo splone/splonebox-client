@@ -75,9 +75,16 @@ class RemoteCallTest(unittest.TestCase):
     pass
 
     def test_connect_functional(self):
-        plug = Plugin("abc", "foo", "bar", "bob", "alice", serverlongtermpk=libnacl.crypto_box_keypair()[0])
+        plug = Plugin("abc",
+                      "foo",
+                      "bar",
+                      "bob",
+                      "alice",
+                      serverlongtermpk=libnacl.crypto_box_keypair()[0])
+
         mock_sock = mocks.connection_socket(plug._rpc._connection)
         plug._rpc._connection.listen = Mock()
+        plug._rpc._connection._init_crypto = Mock()
 
         plug.connect("localhost", 1234)
         ip = mock_sock.connect.call_args[0][0][0]

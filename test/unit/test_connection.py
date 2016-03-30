@@ -7,7 +7,6 @@ from threading import Thread
 from multiprocessing import Lock
 
 from splonecli.rpc.connection import Connection
-from splonecli.rpc.crypto import CryptoState
 from test import mocks
 
 
@@ -20,6 +19,8 @@ def collect_tests(suite: unittest.TestSuite):
 class ConnectionTest(unittest.TestCase):
     def test_connect(self):
         con = Connection(libnacl.crypto_box_keypair()[0])
+
+        con._init_crypto = mock.Mock()
         mock_socket = mocks.connection_socket(con)
 
         con.connect("127.0.0.1", 6666, None, listen=False)
@@ -29,6 +30,7 @@ class ConnectionTest(unittest.TestCase):
         some_callback = mock.Mock()
         listen_mock = mocks.Mock()
         con.listen = listen_mock
+
         con.connect("127.0.0.1", 6666, some_callback, listen=True)
         listen_mock.assert_called_with(some_callback, new_thread=True)
 
@@ -51,7 +53,6 @@ class ConnectionTest(unittest.TestCase):
     def test_listen(self):
         serverpk, serversk = libnacl.crypto_box_keypair()
         con = Connection(serverlongtermpk=serverpk)
-        con.crypto_context.state = CryptoState.ESTABLISHED
         con._connected = True
         con.crypto_context.servershorttermpk = serverpk
         con.crypto_context.clientshorttermpk, \
@@ -67,9 +68,6 @@ class ConnectionTest(unittest.TestCase):
         length = struct.pack("<Q", 24 + len(box))
         msg = b"".join([identifier, length, nonce, box])
 
-        # this queue simulates the socket receive function and blocks
-        # until something is put into the queue
-        # mc = mock.Mock() mock.create_autospec(mc, return_value=b'123')
         execute_lock = Lock()
         execute_lock.acquire()
         mock_callback = mock.Mock()
