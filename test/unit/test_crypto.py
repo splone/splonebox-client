@@ -3,7 +3,7 @@ import os
 import struct
 import libnacl
 
-from splonecli.rpc.crypto import Crypto, CryptoState
+from splonecli.rpc.crypto import Crypto
 
 
 def collect_tests(suite: unittest.TestSuite):
@@ -57,16 +57,16 @@ class CryptoTest(unittest.TestCase):
         data = b"".join([identifier, length, nonce_bin, box])
 
         crypt.crypto_tunnel_read(data)
-        self.assertEqual(CryptoState.ESTABLISHED, crypt.state)
+        self.assertTrue(crypt.crypto_established)
 
-        crypt.state = CryptoState.INITIAL
+        crypt.servershorttermpk = None
 
         # invalid message length
         length = struct.pack("<Q", 20)
         data = b"".join([identifier, length, nonce_bin, box])
         with self.assertRaises(libnacl.CryptError):
             crypt.crypto_tunnel_read(data)
-        self.assertEqual(CryptoState.INITIAL, crypt.state)
+        self.assertEqual(crypt.servershorttermpk, None)
 
         length = struct.pack("<Q", 72)
 
@@ -75,7 +75,7 @@ class CryptoTest(unittest.TestCase):
         data = b"".join([identifier, length, nonce_bin, box])
         with self.assertRaises(ValueError):
             crypt.crypto_tunnel_read(data)
-        self.assertEqual(CryptoState.INITIAL, crypt.state)
+        self.assertEqual(crypt.servershorttermpk, None)
 
         identifier = struct.pack("<8s", b"rZQTd2nT")
 
@@ -88,7 +88,7 @@ class CryptoTest(unittest.TestCase):
         data = b"".join([identifier, length, nonce_bin, box])
         with self.assertRaises(ValueError):
             crypt.crypto_tunnel_read(data)
-        self.assertEqual(CryptoState.INITIAL, crypt.state)
+        self.assertEqual(crypt.servershorttermpk, None)
 
     def test_crypto_write(self):
         serverpk, serversk = libnacl.crypto_box_keypair()
@@ -97,7 +97,6 @@ class CryptoTest(unittest.TestCase):
             crypt.clientshorttermsk = libnacl.crypto_box_keypair()
         crypt.servershorttermpk = serverpk
 
-        crypt.state = CryptoState.ESTABLISHED
         data = b'Hello World'
         msg = crypt.crypto_write(data)
         self.assertEqual(struct.unpack("<8s", msg[:8])[0], b"oqQN2kaM")
@@ -115,7 +114,6 @@ class CryptoTest(unittest.TestCase):
         crypt.clientshorttermpk, \
             crypt.clientshorttermsk = libnacl.crypto_box_keypair()
         crypt.servershorttermpk = serverpk
-        crypt.state = CryptoState.ESTABLISHED
 
         data = b'Hello World'
         identifier = struct.pack("<8s", b"rZQTd2nM")

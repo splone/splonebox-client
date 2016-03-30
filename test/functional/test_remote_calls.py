@@ -20,8 +20,9 @@ see <http://www.gnu.org/licenses/>.
 import ctypes
 import socket
 import unittest
-from unittest.mock import Mock
 import msgpack
+import libnacl
+from unittest.mock import Mock
 
 from splonecli.api.plugin import Plugin
 from splonecli.api.remotefunction import RemoteFunction
@@ -42,7 +43,7 @@ class RemoteCallTest(unittest.TestCase):
             pass
 
         RemoteFunction(fun2)
-        plug = Plugin("abc", "foo", "bar", "bob", "alice", debug=False)
+        plug = Plugin("abc", "foo", "bar", "bob", "alice", serverlongtermpk="")
         mock_send = mocks.rpc_connection_send(plug._rpc)
 
         plug.register(blocking=False)
@@ -59,7 +60,7 @@ class RemoteCallTest(unittest.TestCase):
         RemoteFunction.remote_functions = {}
 
     def test_run_functional(self):
-        plug = Plugin("abc", "foo", "bar", "bob", "alice", debug=False)
+        plug = Plugin("abc", "foo", "bar", "bob", "alice", serverlongtermpk="")
         mock_send = mocks.rpc_connection_send(plug._rpc)
 
         plug.run("plugin_id", "function", [1, "hi", 42.317, b'hi'])
@@ -74,9 +75,16 @@ class RemoteCallTest(unittest.TestCase):
     pass
 
     def test_connect_functional(self):
-        plug = Plugin("abc", "foo", "bar", "bob", "alice", debug=False)
+        plug = Plugin("abc",
+                      "foo",
+                      "bar",
+                      "bob",
+                      "alice",
+                      serverlongtermpk=libnacl.crypto_box_keypair()[0])
+
         mock_sock = mocks.connection_socket(plug._rpc._connection)
         plug._rpc._connection.listen = Mock()
+        plug._rpc._connection._init_crypto = Mock()
 
         plug.connect("localhost", 1234)
         ip = mock_sock.connect.call_args[0][0][0]

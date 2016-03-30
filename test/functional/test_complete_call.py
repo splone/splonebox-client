@@ -42,7 +42,7 @@ class CompleteCall(unittest.TestCase):
 
         RemoteFunction(add)
 
-        plug = Plugin("abc", "foo", "bar", "bob", "alice")
+        plug = Plugin("abc", "foo", "bar", "bob", "alice", serverlongtermpk="")
 
         mock_send = mocks.rpc_connection_send(plug._rpc)
         result = plug.run("abc", "add", [7, 8])
@@ -78,7 +78,7 @@ class CompleteCall(unittest.TestCase):
             pass
 
         RemoteFunction(fun)
-        plug = Plugin("abc", "foo", "bar", "bob", "alice", debug=False)
+        plug = Plugin("abc", "foo", "bar", "bob", "alice", serverlongtermpk="")
         mock_send = mocks.rpc_connection_send(plug._rpc)
 
         result = plug.register(blocking=False)

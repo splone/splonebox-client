@@ -18,16 +18,8 @@ see <http://www.gnu.org/licenses/>.
 """
 
 import struct
-from enum import Enum
 import libnacl
 import libnacl.utils
-
-
-class CryptoState(Enum):
-    """CryptoState represents the state of the key agreement protocol"""
-
-    INITIAL = 1
-    ESTABLISHED = 2
 
 
 class Crypto:
@@ -38,16 +30,15 @@ class Crypto:
     def __init__(self,
                  serverlongtermpk=None,
                  serverlongtermpk_path='.keys/server-long-term.pub'):
-        self.state = CryptoState.INITIAL
 
         if (serverlongtermpk is None):
             self.serverlongtermpk = self.load_key(serverlongtermpk_path)
         else:
             self.serverlongtermpk = serverlongtermpk
 
-        self.clientshorttermsk = ""
-        self.clientshorttermpk = ""
-        self.servershorttermpk = ""
+        self.clientshorttermsk = None
+        self.clientshorttermpk = None
+        self.servershorttermpk = None
         self.nonce = self.crypto_random_mod(281474976710656)
         self.nonce += 1 if self.nonce % 2 == 0 else 0
         self.received_nonce = 0
@@ -118,7 +109,11 @@ class Crypto:
         self.servershorttermpk = libnacl.crypto_box_open(
             data[24:length], nonceexpanded, self.serverlongtermpk,
             self.clientshorttermsk)
-        self.state = CryptoState.ESTABLISHED
+
+    def crypto_established(self) -> bool:
+        """Returns true if valid tunnelpacket has been received"""
+        return (self.servershorttermpk is not None and
+                self.clientshorttermpk is not None)
 
     def crypto_write(self, data: bytes) -> bytes:
         """Create a client message packet consisting of:

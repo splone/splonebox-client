@@ -19,8 +19,6 @@ see <http://www.gnu.org/licenses/>.
 
 import ctypes
 import unittest
-from _thread import start_new_thread
-from threading import Lock
 from unittest.mock import Mock
 
 from splonecli.api.apicall import ApiRun
@@ -45,7 +43,7 @@ class LocalCall(unittest.TestCase):
 
         RemoteFunction(foo)
 
-        plug = Plugin("abc", "foo", "bar", "bob", "alice", debug=False)
+        plug = Plugin("abc", "foo", "bar", "bob", "alice", serverlongtermpk="")
         mocks.plug_rpc_send(plug)  # ignore responses here
 
         mock_send = mocks.rpc_send(plug._rpc)
