@@ -19,9 +19,9 @@ see <http://www.gnu.org/licenses/>.
 
 import logging
 import socket
+import struct
 from threading import Thread
-from multiprocessing import Lock
-from multiprocessing import Semaphore
+from multiprocessing import Lock, Semaphore
 from libnacl import CryptError
 
 from splonecli.rpc.crypto import Crypto
