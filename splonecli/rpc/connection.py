@@ -25,7 +25,7 @@ from multiprocessing import Lock, Semaphore
 from libnacl import CryptError
 
 from splonecli.rpc.crypto import Crypto
-
+from splonecli.rpc.crypto import InvalidPacketException
 
 class Connection:
     def __init__(self,
@@ -47,7 +47,6 @@ class Connection:
         self.crypto_context = Crypto(
             serverlongtermpk=serverlongtermpk,
             serverlongtermpk_path=serverlongtermpk_path)
-        self.tunnelestablished_sem = Semaphore(value=0)
 
     def connect(self,
                 hostname: str,
@@ -77,44 +76,43 @@ class Connection:
             raise ConnectionError("Port has to be an unsigned 16bit integer")
 
         self._port = port
-        logging.info("Connecting to host: " + hostname + ":" + port.__str__())
+        logging.debug("Connecting to host: " + hostname + ":" + port.__str__())
         self._socket.connect((self._ip, self._port))
-        logging.info("Connected to: " + self._ip + ":" + port.__str__())
+        logging.debug("Connected to: " + self._ip + ":" + port.__str__())
 
-        logging.info("Preparing encryption..")
+        logging.debug("Preparing encryption..")
         self._init_crypto()
-        logging.info("Encryption initialized!")
+        logging.debug("Encryption initialized!")
 
-        self.tunnelestablished_sem.release()
         self._connected = True
 
         if listen:
             self.listen(msg_callback, new_thread=listen_on_new_thread)
 
     def _init_crypto(self):
-        tunnelpacket = self.crypto_context.crypto_tunnel()
+        """
+        Executes the crypto handshake w/ server. Raises errors in
+        case of failure.
+
+        """
+
         try:
-            logging.info("Sending tunnel packet...")
-            sent = self._socket.send(tunnelpacket)
-            if sent == 0:
-                logging.info("Encryption could not be initialized!")
-                raise BrokenPipeError()
-        except (OSError, BrokenPipeError):
-            raise BrokenPipeError("Connection has been closed")
+            logging.debug("Sending hello packet...")
+            hellopacket = self.crypto_context.crypto_hello()
+            self._socket.sendall(hellopacket)
 
-        logging.info("Waiting for server tunnel packet...")
-        data = b''
-        data_len = 0
-        while not self.crypto_context.crypto_established():
-            data += self._socket.recv(self._buffer_size)
-            if len(data) == data_len:
-                raise BrokenPipeError("Connection has been closed")
+            logging.debug("Receiving cookie packet..")
+            len_cookie_packet = 168
+            cookiepacket = self._socket.recv(len_cookie_packet)
 
-            data_len = len(data)
-            if data_len > 15:
-                msg_length, = struct.unpack("<Q", data[8:16])
-                if len(data) == msg_length:
-                    self.crypto_context.crypto_tunnel_read(data)
+            logging.debug("Sending initiate packet..")
+            initiatepacket = self._crypto_context.
+                                 crypto_initiate(cookiepacket)
+            self._socket.sendall(initiatepacket)
+
+        except InvalidPacketException as e:
+            logging.error("Crypto handshake failed {s}".format(str(e)))
+            raise
 
     def listen(self, msg_callback, new_thread=True):
         """ Wrapper for the _listen function
@@ -130,9 +128,9 @@ class Connection:
             self._listen_thread = Thread(target=self._listen,
                                          args=(msg_callback, ))
             self._listen_thread.start()
-            logging.info("Start listening..")
+            logging.debug("Start listening..")
         else:
-            logging.info("Start listening..")
+            logging.debug("Start listening..")
             self._listen(msg_callback)
 
     def disconnect(self):
@@ -146,26 +144,14 @@ class Connection:
         """Sends given message to server if connected
 
         :param msg: Message to be sent
-        :raises: BrokenPipeError if something is wrong with the connection
         """
         if not self._connected:
             raise BrokenPipeError("Connection has been closed")
 
-        if not self.crypto_context.crypto_established():
-            self.tunnelestablished_sem.acquire()
+        self.crypto_context.crypto_established.wait()
 
         boxed = self.crypto_context.crypto_write(msg)
-
-        totalsent = 0
-        while totalsent < len(boxed):
-            try:
-                sent = self._socket.send(boxed[totalsent:])
-                if sent == 0:
-                    raise BrokenPipeError()
-            except (OSError, BrokenPipeError):
-                raise BrokenPipeError("Connection has been closed")
-
-            totalsent = totalsent + sent
+        self._socket.sendall(boxed)
 
     def _listen(self, msg_callback):
         """Listens for incoming messages.
@@ -188,22 +174,19 @@ class Connection:
                 return
 
             recv_buffer += data
-            recv_length = len(recv_buffer)
-            if recv_length > 15:
-                msg_length, = struct.unpack("<Q", recv_buffer[8:16])
 
-                while recv_length >= msg_length:
-                    try:
-                        plain = self.crypto_context.crypto_read(
-                            recv_buffer[:msg_length])
-                        msg_callback(plain)
-                    except (ValueError, CryptError):
-                        logging.warning("Unable to decrypt received msg")
+            try:
+                msg_length >= self.crypto_context.crypto_verify_length(recv_buffer)
+
+                while msg_length >= len(recv_buffer):
+                    plain = self.crypto_context.crypto_read(
+                        recv_buffer[:msg_length])
+                    msg_callback(plain)
 
                     recv_buffer = recv_buffer[msg_length:]
-                    recv_length = len(recv_buffer)
-                    if recv_length > 15:
-                        msg_length, = struct.unpack("<Q", recv_buffer[8:16])
+
+            except InvalidPacketException as e:
+                logging.warning(e)
 
         self.is_listening.release()
 

@@ -20,108 +20,96 @@ see <http://www.gnu.org/licenses/>.
 import struct
 import libnacl
 import libnacl.utils
+import threading
 
+class PacketInvalidException(Exception):
+    pass
 
 class Crypto:
     """Crypto stack implementation of splone crypto protocol
     https://github.com/splone/splonebox-core/wiki/Crypto
     """
 
-    def __init__(self,
-                 serverlongtermpk=None,
-                 serverlongtermpk_path='.keys/server-long-term.pub'):
+    def __init__(self, clientlongtermpk, clientlongtermsk,
+                 serverlongtermpk):
+        """
+        Constructs a crypto object.
 
-        if (serverlongtermpk is None):
-            self.serverlongtermpk = self.load_key(serverlongtermpk_path)
-        else:
-            self.serverlongtermpk = serverlongtermpk
+        clientlongtermpk -- client's long term public key
+        clientlongtermsk -- client's long term secret key
+        serverlongtermpk -- server's long term public key
+
+        """
+
+        self.serverlongtermpk = serverlongtermpk
+        self.clientlongtermpk = clientlongtermpk
+        self.clientlongtermsk = clientlongtermsk
 
         self.clientshorttermsk = None
         self.clientshorttermpk = None
         self.servershorttermpk = None
+
         self.nonce = self.crypto_random_mod(281474976710656)
         self.nonce += 1 if self.nonce % 2 == 0 else 0
-        self.received_nonce = 0
+        self.last_received_nonce = 0
 
-    def crypto_tunnel(self) -> bytes:
-        """Create a client tunnel packet consisting of:
-        * 8 bytes: the ASCII bytes "oqQN2kaT"
-        * 8 bytes: packet length
-        * 8 bytes: a client-selected compressed nonce in little-endian
-                   form. This compressed nonce is implicitly prefixed by
-                   "splonebox-client" to form a 24-byte nonce
-        * 32 bytes: the client's short-term public key C'
-        * 80 bytes: a cryptographic box encrypted and authenticated to the
-                    server's long-term public key S from the client's short-term
-                    public key C' using this 24-byte nonce. The 64-byte
-                    plaintext inside the box has the following contents:
-            * 64 bytes: all zero
+        self.crypto_established = threading.Event()
 
-        :return: client tunnel packet
-        :raises: :CryptError on failure
+    @classmethod
+    def by_path(cls,
+        clientlongtermpk = '.keys/client-long-term.pub',
+        clientlongtermsk = '.keys/client-long-term.priv',
+        serverlongtermpk = '.keys/server-long-term.pub'):
         """
-        self.crypto_nonce_update()
+        Constructor to create a Crypto class by passing path to keys
+        instead of passing keys directly.
 
-        identifier = struct.pack("<8s", b"oqQN2kaT")
-        length = struct.pack("<Q", 136)
-        nonce = struct.pack("<16sQ", b"splonebox-client", self.nonce)
-        zeros = bytearray(64)
+        clientlongtermpk -- path to client's long term public key
+        clientlongtermsk -- path to client's long term secret key
+        serverlongtermpk -- path to server's long term public key
 
-        self.clientshorttermpk, \
-            self.clientshorttermsk = libnacl.crypto_box_keypair()
-        box = libnacl.crypto_box(zeros, nonce, self.serverlongtermpk,
-                                 self.clientshorttermsk)
-
-        nonce = struct.pack("<Q", self.nonce)
-
-        return b"".join([identifier, length, nonce, self.clientshorttermpk, box
-                         ])
-
-    def crypto_tunnel_read(self, data: bytes):
-        """Read a server tunnel packet consisting of:
-        * 8 bytes: the ASCII bytes "rZQTd2nT"
-        * 8 bytes: packet length
-        * 8 bytes: a server-selected compressed nonce in little-endian form.
-                   This compressed nonce is implicitly prefixed by
-                   "splonebox-server" to form a 24-byte nonce.
-        * 48 bytes: a cryptographic box encrypted and authenticated to the
-                    client's short-term public key C' from the server's
-                    long-term public key S using this 24-byte nonce. The 32-byte
-                    plaintext inside the box has the following contents:
-            * 32 bytes: the server's short-term public key S'.
-
-        :return: None
-        :raises: :CryptError on decryption failure
-        :raises: :ValueError bad identifier/nonce
         """
+        clientlongtermpk = self.load_key(clientlongtermpk)
+        clientlongtermsk = self.load_key(clientlongtermsk)
+        serverlongtermpk = self.load_key(serverlongtermpk)
+        return cls(clientlongtermpk, clientlongtermsk, serverlongtermpk)
+
+    def crypto_verify_length(self, data: bytes) -> bytes
+        """
+        Extracts and verifies the length bytes of a server message
+        packet. Raises an InvalidPacketException in case of invalid
+        length. It verifies message identifier, too.
+
+        data -- payload of a server message packet
+        returns -- packet length
+
+        """
+        if not length(data) >= 81):
+            raise InvalidPacketException("Message to short")
+
         identifier, = struct.unpack("<8s", data[:8])
 
-        if identifier.decode('ascii') != "rZQTd2nT":
-            raise ValueError("Received identifier is bad")
+        if identifier.decode('ascii') != "rZQTd2nM":
+            raise InvalidPacketException("Received identifier is bad")
 
-        length, = struct.unpack("<Q", data[8:16])
-        nonce, = struct.unpack("<Q", data[16:24])
-        nonceexpanded = struct.pack("<16sQ", b"splonebox-server", nonce)
+        length, _ = struct.unpack("<Q", recv_buffer[8:80])
 
-        if nonce <= self.received_nonce or nonce % 2 == 1:
-            raise ValueError('Received nonce is bad')
+        try:
+            orig = libnacl.crypto_sign_open(length, self.servershorttermpk)
+            #TODO unpack length from orig
+        except ValueError as e:
+            logging.error(e)
+            raise InvalidPacketException("Failed to verify length of message packet!")
 
-        self.servershorttermpk = libnacl.crypto_box_open(
-            data[24:length], nonceexpanded, self.serverlongtermpk,
-            self.clientshorttermsk)
-
-    def crypto_established(self) -> bool:
-        """Returns true if valid tunnelpacket has been received"""
-        return (self.servershorttermpk is not None and
-                self.clientshorttermpk is not None)
+        return orig
 
     def crypto_write(self, data: bytes) -> bytes:
         """Create a client message packet consisting of:
-        * 8 bytes: the ASCII bytes "oqQN2kaM"
-        * 8 bytes: packet length
+        * 8 bytes: the ASCII bytes "rZQTd2nM"
         * 8 bytes: a client-selected compressed nonce in little-endian form.
                    This compressed nonce is implicitly prefixed by
                    "splonebox-server" to form a 24-byte nonce.
+        * 72 bytes: length signed with client's short term private key C'
         * n bytes: a cryptographic box encrypted and authenticated to the
                     client's short-term public key C' from the server's
                     short-term public key S' using this 24-byte nonce. The
@@ -139,8 +127,131 @@ class Crypto:
                                  self.clientshorttermsk)
         nonce = struct.pack("<Q", self.nonce)
         length = struct.pack("<Q", 24 + len(box))
+        length_signed = libnacl.crypto_sign(length, self.clientshorttermsk)
 
-        return b"".join([identifier, length, nonce, box])
+        return b"".join([identifier, length_signed, nonce, box])
+
+    def crypto_hello(self) -> bytes:
+        """Create a client tunnel packet consisting of:
+        * 8 bytes: the ASCII bytes "oqQN2kaH"
+        * 32 bytes: client's short-term public key C'
+        * 64 bytes: all zero
+        * 8 bytes: a client-selected compressed nonce in little-endian
+                   form. This compressed nonce is implicitly prefixed by
+                   "splonebox-client" to form a 24-byte nonce
+        * 80 bytes: a cryptographic box encrypted and authenticated to the
+                    server's long-term public key S from the client's short-term
+                    public key C' using this 24-byte nonce. The 64-byte
+                    plaintext inside the box has the following contents:
+            * 64 bytes: all zero
+
+        :return: client hello packet
+        """
+        self.crypto_nonce_update()
+
+        identifier = struct.pack("<8s", b"oqQN2kaH")
+        nonce = struct.pack("<16sQ", b"splonebox-client-H", self.nonce)
+        zeros = bytearray(64)
+
+        self.clientshorttermpk, \
+            self.clientshorttermsk = libnacl.crypto_box_keypair()
+        box = libnacl.crypto_box(zeros, nonce, self.serverlongtermpk,
+                                 self.clientshorttermsk)
+
+        nonce = struct.pack("<Q", self.nonce)
+
+        return b"".join([identifier, self.clientshorttermpk, zero, nonce, box])
+
+    def _validate_cookiepacket(self, cookiepacket) -> bytes:
+        """
+        Validates the cookie packet and extracts the cookie. In case
+        of being invalid the function raises a PacketInvalidException.
+
+        cookiepacket -- actual cookie packet sent by server
+        result -- returns cookie extracted
+
+        """
+        if not len(cookiepacket) == 168:
+            raise PacketInvalidException("Cookie packet has invalid length.")
+
+        identifier, = struct.unpack("<8s", data[:8])
+        if identifier.decode('ascii') != "rZQTd2nC":
+            raise PacketInvalidException("Received identifier is bad")
+
+        #TODO nonce - nicht 'Q'
+        nonce, _ = struct.unpack("<Q", data[8:24])
+        self.crypto_verify_nonce(nonce):
+        self.last_received_nonce = nonce
+
+        nonceexpanded = struct.pack("<16sQ", b"splonePK", nonce)
+
+        try:
+            payload = libnacl.crypto_box_open(data[24:], nonceexpanded,
+                                              self.serverlongtermpk,
+                                              self.clientshorttermsk)
+        except ValueError as e:
+            logging.error(e)
+            raise InvalidPacketException("Failed to open cookie packet box!")
+
+        self.servershorttermpk, _ = struct.unpack("<32s", payload)
+        cookie = struct.unpack("<96s", payload)
+        return cookie
+
+    def crypto_initiate(self, cookiepacket) -> bytes:
+        """ Validate the cookie packet and create the corresponding
+        initate packet consisting of:
+
+        * 8 bytes: the ASCII bytes "oqQN2kaI".
+        * 96 bytes: the server's cookie.
+        * 8 bytes: a client-selected compressed nonce in little-endian form.
+                  This compressed nonce is implicitly prefixed by
+                  "splonebox-client" to form a 24-byte nonce.
+        * 144 bytes: a cryptographic box encrypted and authenticated to the
+                    server's short-term public key S' from the client's
+                    short-term public key C' using this 24-byte nonce. The
+                    (96+M)-byte plaintext inside the box has the following
+                    contents:
+          * 32 bytes: the client's long-term public key C.
+          * 16 bytes: a client-selected compressed nonce in little-endian
+                      form. This compressed nonce is implicitly prefixed by
+                      "splonePV" to form a 24-byte nonce.
+          * 80 bytes: a cryptographic box encrypted and authenticated to the
+                      server's long-term public key S from the client's
+                      long-term public key C using this 24-byte nonce. The
+                      32-byte plaintext inside the box has the following
+                      contents:
+              * 32 bytes: the client's short-term public key C'.
+              * 32 bytes: server's short term public key S'
+
+        cookiepacket -- the cookie packet sent by server
+
+        :return: client initiate packet
+        """
+        cookie = self._validate_cookiepacket(cookiepacket)
+        self.crypto_nonce_update()
+
+        vouch_payload = b"".join([self.clientshorttermpk,
+                                  self.servershorttermpk])
+        ##TODO nonce anpassen
+        vouch_nonce = struct.pack("<16sQ", b"splonePV", self.nonce)
+        vouch_box = libnacl.crypto_box(vouch_payload, vouch_nonce,
+                        self.serverlongtermpk, self.clientlongtermpk)
+
+        self.crypto_nonce_update()
+
+        payload = b"".join([self.self.clientlongtermpk, self.nonce,
+                            vouch_box])
+        payload_nonce = struct.pack("<16sQ", b"splonebox-client", self.nonce)
+        payload_box = libnacl.crypto_box(payload, payload_nonce,
+                            self.servershorttermpk, self.clientshorttermsk)
+
+        identifier = struct.pack("<8s", b"oqQN2kaI")
+
+        initiatepacket = b"".join([identifier, cookie, self.nonce,
+                                   payload_box])
+
+        self.crypto_established.set()
+        return initiatepacket
 
     def crypto_read(self, data: bytes) -> bytes:
         """Read a server message packet consisting of:
@@ -156,26 +267,24 @@ class Crypto:
             * m bytes: data
 
         :return: server message packet
-        :raises: :CryptError on decryption failure
-        :raises: :ValueError bad identifier/nonce
+        :raises: InvalidPacketException in case of error
         """
-        identifier, = struct.unpack("<8s", data[:8])
+        length = self.crypto_verify_length(data)
 
-        if identifier.decode('ascii') != "rZQTd2nM":
-            raise ValueError("Received identifier is bad")
-
-        length, = struct.unpack("<Q", data[8:16])
-        nonce, = struct.unpack("<Q", data[16:24])
+        nonce, = struct.unpack("<Q", data[8:16])
         nonceexpanded = struct.pack("<16sQ", b"splonebox-server", nonce)
 
-        if nonce <= self.received_nonce or nonce % 2 == 1:
-            raise ValueError('Received nonce is bad')
+        self.crypto_verify_nonce(nonce):
 
-        plain = libnacl.crypto_box_open(data[24:length], nonceexpanded,
-                                        self.servershorttermpk,
-                                        self.clientshorttermsk)
+        try:
+            plain = libnacl.crypto_box_open(data[:length], nonceexpanded,
+                                            self.servershorttermpk,
+                                            self.clientshorttermsk)
+        except ValueError as e:
+            logging.error(e)
+            raise InvalidPacketException("Failed to unbox message!")
 
-        self.received_nonce = nonce
+        self.last_received_nonce = nonce
 
         return plain
 
@@ -198,6 +307,11 @@ class Crypto:
         """Increment the nonce"""
         self.nonce += 2
 
+    def crypto_verify_nonce(self, nonce) -> bool:
+        """ Raises an InvalidPacketException if nonce is invalid """
+        if (nonce <= self.last_received_nonce or nonce % 2 == 1):
+            raise InvalidPacketException("Invalid Nonce!")
+
     @staticmethod
     def load_key(path: str) -> bytes:
         """Load a key from a file
@@ -207,6 +321,7 @@ class Crypto:
         if not isinstance(path, str):
             raise TypeError()
 
-        stream = open(path, 'rb')
+        with open(path, 'rb') as f:
+            key = f.read()
 
-        return stream.read()
+        return key
