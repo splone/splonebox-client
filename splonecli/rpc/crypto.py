@@ -74,6 +74,63 @@ class Crypto:
         serverlongtermpk = self.load_key(serverlongtermpk)
         return cls(clientlongtermpk, clientlongtermsk, serverlongtermpk)
 
+    @staticmethod
+    def safenonce(self, flaglongterm):
+        if not flagkeyloaded:
+            fdlock = filesystem.open_lock(".keys/lock")
+
+            if fdlock == -1:
+                return -1
+
+            noncekey = load_key(".keys/noncekey")
+            os.close(fdlock)
+            flagkeyloaded = 1
+
+        if counterlow >= counterhigh:
+            fdlock = filesystem.open_lock(".keys/lock")
+
+            if fdlock == -1:
+                return -1
+
+            noncecounter = load_key(".keys/noncecounter")
+            counterlow = struct.unpack("<Q", noncecounter)
+
+            if flaglongterm:
+                counterhigh = counterlow + 1048576
+            else:
+                counterhigh = counterlow + 1
+
+            data = struct.pack("<Q", counterhigh)
+
+            if fileystem.safe_sync(".keys/noncecounter", data) == -1:
+                return -1
+
+        data[8:16] = libnacl.randombytes(8)
+        data[:8] = struct.pack("<Q", counterlow++)
+
+        out = crypto_block(data, noncekey)
+
+        return out
+
+    @staticmethod
+    def crypto_block(in: bytes, k: bytes) -> bytes
+        v0 = struct.unpack("<Q", in[:8])
+        v1 = struct.unpack("<Q", in[8:16])
+        k0 = struct.unpack("<Q", k[:8])
+        k1 = struct.unpack("<Q", k[8:16])
+        k2 = struct.unpack("<Q", k[16:24])
+        k3 = struct.unpack("<Q", k[24:32])
+        blocksum = 0
+        delta = int('0x9e3779b97f4a7c15', 16)
+
+        for i in range(0, 32):
+            blocksum += delta
+            v0 += ((v1 << 7) + k0) ^ (v1 + blocksum) ^ ((v1 >> 12) + k1);
+            v1 += ((v0 << 16) + k2) ^ (v0 + blocksum) ^ ((v0 >> 8) + k3);
+
+        return struct.pack("<QQ", v0, v1)
+
+
     def crypto_verify_length(self, data: bytes) -> bytes
         """
         Extracts and verifies the length bytes of a server message
