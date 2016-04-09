@@ -19,13 +19,12 @@ see <http://www.gnu.org/licenses/>.
 
 import logging
 import socket
-import struct
 from threading import Thread
-from multiprocessing import Lock, Semaphore
-from libnacl import CryptError
+from multiprocessing import Lock
 
 from splonecli.rpc.crypto import Crypto
 from splonecli.rpc.crypto import InvalidPacketException
+
 
 class Connection:
     def __init__(self,
@@ -106,8 +105,7 @@ class Connection:
             cookiepacket = self._socket.recv(len_cookie_packet)
 
             logging.debug("Sending initiate packet..")
-            initiatepacket = self._crypto_context.
-                                 crypto_initiate(cookiepacket)
+            initiatepacket = self._crypto_context.crypto_initiate(cookiepacket)
             self._socket.sendall(initiatepacket)
 
         except InvalidPacketException as e:
@@ -176,7 +174,8 @@ class Connection:
             recv_buffer += data
 
             try:
-                msg_length >= self.crypto_context.crypto_verify_length(recv_buffer)
+                msg_length = self.crypto_context.crypto_verify_length(
+                    recv_buffer)
 
                 while msg_length >= len(recv_buffer):
                     plain = self.crypto_context.crypto_read(

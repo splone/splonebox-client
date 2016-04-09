@@ -20,12 +20,14 @@ see <http://www.gnu.org/licenses/>.
 import os
 import fcntl
 
+
 class Filesystem():
     def __init__(self):
+        pass
 
     def open_lock(self, filename):
         try:
-            fd = os.open(filename, os.O_RDWR | os.O_CLOEXEC))
+            fd = os.open(filename, os.O_RDWR | os.O_CLOEXEC)
         except OSError:
             return -1
 
@@ -40,14 +42,15 @@ class Filesystem():
     @staticmethod
     def open_write(self, filename):
         try:
-            fd = os.open(filename, os.O_CREAT | os.O_WRONLY | os.O_NONBLOCK | os.O_CLOEXEC, 0600);
+            fd = os.open(filename, os.O_CREAT | os.O_WRONLY | os.O_NONBLOCK |
+                         os.O_CLOEXEC, 600)
         except OSError:
             return -1
 
         return fd
 
     def save_sync(self, filename, data: bytes):
-        fd = open_write(filename)
+        fd = Filesystem.open_write(filename)
 
         if fd == -1:
             return -1
