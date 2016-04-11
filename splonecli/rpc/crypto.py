@@ -22,6 +22,9 @@ import libnacl
 import threading
 import logging
 import struct
+import os
+from splonecli.os.filesystem import open_lock
+from splonecli.os.filesystem import save_sync
 
 counterlow = 0
 counterhigh = 0
@@ -123,23 +126,26 @@ class Crypto:
         8 bytes: random bytes
 
         """
+        global keyloaded
+        global counterlow
+        global counterhigh
 
         if not keyloaded:
-            fdlock = filesystem.open_lock(".keys/lock")
+            fdlock = open_lock(".keys/lock")
 
             noncekey = load_key(".keys/noncekey")
             os.close(fdlock)
             keyloaded = True
 
         if counterlow >= counterhigh:
-            fdlock = filesystem.open_lock(".keys/lock")
+            fdlock = open_lock(".keys/lock")
 
             noncecounter = load_key(".keys/noncecounter")
-            counterlow = struct.unpack("<Q", noncecounter)
+            counterlow, = struct.unpack("<Q", noncecounter)
             counterhigh = counterlow + 1
 
             data = struct.pack("<Q", counterhigh)
-            filesystem.safe_sync(".keys/noncecounter", data)
+            save_sync(".keys/noncecounter", data)
 
         data = struct.pack("<Q8s", counterlow, libnacl.randombytes(8))
         counterlow += 1
