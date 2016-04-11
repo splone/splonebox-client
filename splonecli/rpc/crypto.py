@@ -27,7 +27,7 @@ counterlow = 0
 counterhigh = 0
 keyloaded = False
 
-class PacketInvalidException(Exception):
+class InvalidPacketException(Exception):
     pass
 
 def load_key(path: str) -> bytes:
