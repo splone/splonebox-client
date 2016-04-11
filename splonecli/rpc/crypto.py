@@ -254,7 +254,7 @@ class Crypto:
             raise PacketInvalidException("Received identifier is bad")
 
         nonce, _ = struct.unpack("<16s", cookiepacket[8:24])
-        self._verify_nonce(nonce):
+        self._verify_nonce(nonce)
         self.last_received_nonce = nonce
 
         nonceexpanded = struct.pack("<8s16s", b"splonePK", nonce)
