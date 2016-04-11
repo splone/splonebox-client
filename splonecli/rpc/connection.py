@@ -20,6 +20,7 @@ see <http://www.gnu.org/licenses/>.
 import logging
 import socket
 from threading import Thread
+from threading import Lock
 
 from splonecli.rpc.crypto import Crypto
 from splonecli.rpc.crypto import InvalidPacketException
