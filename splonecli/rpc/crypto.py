@@ -235,7 +235,7 @@ class Crypto:
 
         nonce = struct.pack("<Q", self.nonce)
 
-        return b"".join([identifier, self.clientshorttermpk, zero, nonce, box])
+        return b"".join([identifier, self.clientshorttermpk, zeros, nonce, box])
 
     def _verify_cookiepacket(self, cookiepacket) -> bytes:
         """
@@ -253,10 +253,7 @@ class Crypto:
         if identifier.decode('ascii') != "rZQTd2nC":
             raise PacketInvalidException("Received identifier is bad")
 
-        nonce, _ = struct.unpack("<16s", cookiepacket[8:24])
-        self._verify_nonce(nonce)
-        self.last_received_nonce = nonce
-
+        nonce, = struct.unpack("<16s", cookiepacket[8:24])
         nonceexpanded = struct.pack("<8s16s", b"splonePK", nonce)
 
         try:
@@ -267,8 +264,8 @@ class Crypto:
             logging.error(e)
             raise InvalidPacketException("Failed to open cookie packet box!")
 
-        self.servershorttermpk, _ = struct.unpack("<32s", payload)
-        cookie = struct.unpack("<96s", payload)
+        self.servershorttermpk, = struct.unpack("<32s", payload[:32])
+        cookie = struct.unpack("<96s", payload[32:128])
         return cookie
 
     def crypto_initiate(self, cookiepacket) -> bytes:

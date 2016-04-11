@@ -43,9 +43,7 @@ class Connection:
         self._socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self._connected = False
         self.is_listening = Lock()
-        self.crypto_context = Crypto(
-            serverlongtermpk=serverlongtermpk,
-            serverlongtermpk_path=serverlongtermpk_path)
+        self.crypto_context = Crypto.by_path()
 
     def connect(self,
                 hostname: str,
@@ -105,7 +103,7 @@ class Connection:
             cookiepacket = self._socket.recv(len_cookie_packet)
 
             logging.debug("Sending initiate packet..")
-            initiatepacket = self._crypto_context.crypto_initiate(cookiepacket)
+            initiatepacket = self.crypto_context.crypto_initiate(cookiepacket)
             self._socket.sendall(initiatepacket)
 
         except InvalidPacketException as e:
