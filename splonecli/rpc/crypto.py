@@ -17,13 +17,48 @@ see <http://www.gnu.org/licenses/>.
 
 """
 
-import struct
-import libnacl
 import libnacl.utils
+import libnacl
 import threading
+import logging
+import struct
+
+counterlow = 0
+counterhigh = 0
+keyloaded = False
 
 class PacketInvalidException(Exception):
     pass
+
+def load_key(path: str) -> bytes:
+    """Load a key from a file
+    :raises :TypeError if path is not a string
+    :raises :IOError if file cannot be opened
+    """
+    if not isinstance(path, str):
+        raise TypeError()
+
+    with open(path, 'rb') as f:
+        key = f.read()
+
+    return key
+
+def crypto_block(data: bytes, k: bytes) -> bytes:
+    v0 = struct.unpack("<Q", data[:8])
+    v1 = struct.unpack("<Q", data[8:16])
+    k0 = struct.unpack("<Q", k[:8])
+    k1 = struct.unpack("<Q", k[8:16])
+    k2 = struct.unpack("<Q", k[16:24])
+    k3 = struct.unpack("<Q", k[24:32])
+    blocksum = 0
+    delta = 11400714819323198485
+
+    for i in range(0, 32):
+        blocksum += delta
+        v0 += ((v1 << 7) + k0) ^ (v1 + blocksum) ^ ((v1 >> 12) + k1)
+        v1 += ((v0 << 16) + k2) ^ (v0 + blocksum) ^ ((v0 >> 8) + k3)
+
+    return struct.pack("<QQ", v0, v1)
 
 class Crypto:
     """Crypto stack implementation of splone crypto protocol
@@ -69,69 +104,54 @@ class Crypto:
         serverlongtermpk -- path to server's long term public key
 
         """
-        clientlongtermpk = self.load_key(clientlongtermpk)
-        clientlongtermsk = self.load_key(clientlongtermsk)
-        serverlongtermpk = self.load_key(serverlongtermpk)
+        clientlongtermpk = load_key(clientlongtermpk)
+        clientlongtermsk = load_key(clientlongtermsk)
+        serverlongtermpk = load_key(serverlongtermpk)
         return cls(clientlongtermpk, clientlongtermsk, serverlongtermpk)
 
     @staticmethod
-    def safenonce(self, flaglongterm):
-        if not flagkeyloaded:
-            fdlock = filesystem.open_lock(".keys/lock")
+    def safenonce():
+        """
+        This method generates a crypto nonce, returns it as well as
+        stores it on disk. Crypto using those long term keys requires
+        the nonce to be unique even if the process is restarted. So we
+        need to keep track of it even after a process reboot.
 
-            if fdlock == -1:
-                return -1
+        The 24 byte nonce conists of
+        8 bytes: 'splonePV' prefix
+        8 bytes: counter
+        8 bytes: random bytes
+
+        """
+
+        if not keyloaded:
+            fdlock = filesystem.open_lock(".keys/lock")
 
             noncekey = load_key(".keys/noncekey")
             os.close(fdlock)
-            flagkeyloaded = 1
+            keyloaded = True
 
         if counterlow >= counterhigh:
             fdlock = filesystem.open_lock(".keys/lock")
 
-            if fdlock == -1:
-                return -1
-
             noncecounter = load_key(".keys/noncecounter")
             counterlow = struct.unpack("<Q", noncecounter)
-
-            if flaglongterm:
-                counterhigh = counterlow + 1048576
-            else:
-                counterhigh = counterlow + 1
+            counterhigh = counterlow + 1
 
             data = struct.pack("<Q", counterhigh)
+            filesystem.safe_sync(".keys/noncecounter", data)
 
-            if fileystem.safe_sync(".keys/noncecounter", data) == -1:
-                return -1
+        data = struct.pack("<8sQ8s",
+                           "splonePV",
+                           counterlow,
+                           libnacl.randombytes(8))
+        counterlow += 1
 
-        data[8:16] = libnacl.randombytes(8)
-        data[:8] = struct.pack("<Q", counterlow++)
+        nonce = crypto_block(data, noncekey)
 
-        out = crypto_block(data, noncekey)
+        return nonce
 
-        return out
-
-    @staticmethod
-    def crypto_block(in: bytes, k: bytes) -> bytes
-        v0 = struct.unpack("<Q", in[:8])
-        v1 = struct.unpack("<Q", in[8:16])
-        k0 = struct.unpack("<Q", k[:8])
-        k1 = struct.unpack("<Q", k[8:16])
-        k2 = struct.unpack("<Q", k[16:24])
-        k3 = struct.unpack("<Q", k[24:32])
-        blocksum = 0
-        delta = int('0x9e3779b97f4a7c15', 16)
-
-        for i in range(0, 32):
-            blocksum += delta
-            v0 += ((v1 << 7) + k0) ^ (v1 + blocksum) ^ ((v1 >> 12) + k1);
-            v1 += ((v0 << 16) + k2) ^ (v0 + blocksum) ^ ((v0 >> 8) + k3);
-
-        return struct.pack("<QQ", v0, v1)
-
-
-    def crypto_verify_length(self, data: bytes) -> bytes
+    def crypto_verify_length(self, data: bytes) -> bytes:
         """
         Extracts and verifies the length bytes of a server message
         packet. Raises an InvalidPacketException in case of invalid
@@ -141,7 +161,7 @@ class Crypto:
         returns -- packet length
 
         """
-        if not length(data) >= 81):
+        if not len(data) >= 81:
             raise InvalidPacketException("Message to short")
 
         identifier, = struct.unpack("<8s", data[:8])
@@ -149,11 +169,12 @@ class Crypto:
         if identifier.decode('ascii') != "rZQTd2nM":
             raise InvalidPacketException("Received identifier is bad")
 
-        length, _ = struct.unpack("<Q", recv_buffer[8:80])
+        length, _ = struct.unpack("<Q", data[8:80])
 
         try:
-            orig = libnacl.crypto_sign_open(length, self.servershorttermpk)
-            #TODO unpack length from orig
+            data = libnacl.crypto_sign_open(length, self.servershorttermpk)
+            orig, _ = struct.unpack("<Q", data)
+
         except ValueError as e:
             logging.error(e)
             raise InvalidPacketException("Failed to verify length of message packet!")
@@ -219,7 +240,7 @@ class Crypto:
 
         return b"".join([identifier, self.clientshorttermpk, zero, nonce, box])
 
-    def _validate_cookiepacket(self, cookiepacket) -> bytes:
+    def _verify_cookiepacket(self, cookiepacket) -> bytes:
         """
         Validates the cookie packet and extracts the cookie. In case
         of being invalid the function raises a PacketInvalidException.
@@ -231,19 +252,18 @@ class Crypto:
         if not len(cookiepacket) == 168:
             raise PacketInvalidException("Cookie packet has invalid length.")
 
-        identifier, = struct.unpack("<8s", data[:8])
+        identifier, = struct.unpack("<8s", cookiepacket[:8])
         if identifier.decode('ascii') != "rZQTd2nC":
             raise PacketInvalidException("Received identifier is bad")
 
-        #TODO nonce - nicht 'Q'
-        nonce, _ = struct.unpack("<Q", data[8:24])
-        self.crypto_verify_nonce(nonce):
+        nonce, _ = struct.unpack("<16s", cookiepacket[8:24])
+        self._verify_nonce(nonce):
         self.last_received_nonce = nonce
 
-        nonceexpanded = struct.pack("<16sQ", b"splonePK", nonce)
+        nonceexpanded = struct.pack("<8s16s", b"splonePK", nonce)
 
         try:
-            payload = libnacl.crypto_box_open(data[24:], nonceexpanded,
+            payload = libnacl.crypto_box_open(cookiepacket[24:], nonceexpanded,
                                               self.serverlongtermpk,
                                               self.clientshorttermsk)
         except ValueError as e:
@@ -284,13 +304,12 @@ class Crypto:
 
         :return: client initiate packet
         """
-        cookie = self._validate_cookiepacket(cookiepacket)
+        cookie = self._verify_cookiepacket(cookiepacket)
         self.crypto_nonce_update()
 
         vouch_payload = b"".join([self.clientshorttermpk,
                                   self.servershorttermpk])
-        ##TODO nonce anpassen
-        vouch_nonce = struct.pack("<16sQ", b"splonePV", self.nonce)
+        vouch_nonce = self.safenonce()
         vouch_box = libnacl.crypto_box(vouch_payload, vouch_nonce,
                         self.serverlongtermpk, self.clientlongtermpk)
 
@@ -329,10 +348,9 @@ class Crypto:
         length = self.crypto_verify_length(data)
 
         nonce, = struct.unpack("<Q", data[8:16])
+        self._verify_nonce(nonce)
+
         nonceexpanded = struct.pack("<16sQ", b"splonebox-server", nonce)
-
-        self.crypto_verify_nonce(nonce):
-
         try:
             plain = libnacl.crypto_box_open(data[:length], nonceexpanded,
                                             self.servershorttermpk,
@@ -364,21 +382,7 @@ class Crypto:
         """Increment the nonce"""
         self.nonce += 2
 
-    def crypto_verify_nonce(self, nonce) -> bool:
+    def _verify_nonce(self, nonce):
         """ Raises an InvalidPacketException if nonce is invalid """
         if (nonce <= self.last_received_nonce or nonce % 2 == 1):
             raise InvalidPacketException("Invalid Nonce!")
-
-    @staticmethod
-    def load_key(path: str) -> bytes:
-        """Load a key from a file
-        :raises :TypeError if path is not a string
-        :raises :IOError if file cannot be opened
-        """
-        if not isinstance(path, str):
-            raise TypeError()
-
-        with open(path, 'rb') as f:
-            key = f.read()
-
-        return key
