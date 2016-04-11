@@ -141,10 +141,7 @@ class Crypto:
             data = struct.pack("<Q", counterhigh)
             filesystem.safe_sync(".keys/noncecounter", data)
 
-        data = struct.pack("<8sQ8s",
-                           "splonePV",
-                           counterlow,
-                           libnacl.randombytes(8))
+        data = struct.pack("<Q8s", counterlow, libnacl.randombytes(8))
         counterlow += 1
 
         nonce = crypto_block(data, noncekey)
