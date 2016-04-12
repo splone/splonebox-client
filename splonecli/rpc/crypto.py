@@ -317,7 +317,8 @@ class Crypto:
 
         identifier = struct.pack("<8s", b"oqQN2kaI")
 
-        initiatepacket = b"".join([identifier, cookie, self.nonce,
+        nonce = struct.pack("<Q", self.nonce)
+        initiatepacket = b"".join([identifier, cookie, nonce,
                                    payload_box])
 
         self.crypto_established.set()
