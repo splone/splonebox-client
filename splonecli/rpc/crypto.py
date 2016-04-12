@@ -162,11 +162,11 @@ class Crypto:
         if identifier.decode('ascii') != "rZQTd2nM":
             raise InvalidPacketException("Received identifier is bad")
 
-        length, _ = struct.unpack("<Q", data[8:80])
+        length, = struct.unpack("<Q", data[8:80])
 
         try:
             data = libnacl.crypto_sign_open(length, self.servershorttermpk)
-            orig, _ = struct.unpack("<Q", data)
+            orig, = struct.unpack("<Q", data)
 
         except ValueError as e:
             logging.error(e)
@@ -261,7 +261,7 @@ class Crypto:
             raise InvalidPacketException("Failed to open cookie packet box!")
 
         self.servershorttermpk, = struct.unpack("<32s", payload[:32])
-        cookie = struct.unpack("<96s", payload[32:128])
+        cookie, = struct.unpack("<96s", payload[32:128])
         return cookie
 
     def crypto_initiate(self, cookiepacket) -> bytes:
