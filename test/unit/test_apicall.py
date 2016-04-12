@@ -47,31 +47,40 @@ class ApiCallTest(unittest.TestCase):
         with self.assertRaises(InvalidMessageError):
             ApiRun.from_msgpack_request(msg)
 
+        msg.function = "run"
         msg.arguments = [[None], b'fun', []]
         with self.assertRaises(InvalidMessageError):
             ApiRun.from_msgpack_request(msg)
 
-        msg.arguments = [[b'id should not be set', 123], 1, []]
+        msg.arguments = [[b'id should not be set', 123], b'fun', []]
         with self.assertRaises(InvalidMessageError):
             ApiRun.from_msgpack_request(msg)
 
-        msg.arguments = ["not a list", 0, []]
+        msg.arguments = ["not a list", b'fun', []]
         with self.assertRaises(InvalidMessageError):
             ApiRun.from_msgpack_request(msg)
 
-        msg.arguments = [[None, 123], 0, "not a list"]
+        msg.arguments = [[None, 123], b'fun', "not a list"]
         with self.assertRaises(InvalidMessageError):
             ApiRun.from_msgpack_request(msg)
 
-        msg.arguments = [[None, 123], "not an int", []]
+        msg.arguments = [[None, "not an int"], b'fun', []]
         with self.assertRaises(InvalidMessageError):
             ApiRun.from_msgpack_request(msg)
 
-        msg.arguments = [[b"k", 123], 0, []]
+        msg.arguments = [[None, 123], "not bytes", []]
         with self.assertRaises(InvalidMessageError):
             ApiRun.from_msgpack_request(msg)
 
-        msg.arguments = [[None, "not an int"], 0, []]
+        msg.arguments = 123
+        with self.assertRaises(InvalidMessageError):
+            ApiRun.from_msgpack_request(msg)
+
+        msg.arguments = []
+        with self.assertRaises(InvalidMessageError):
+            ApiRun.from_msgpack_request(msg)
+
+        msg.arguments = [[None, 123], b'fun', [None]]
         with self.assertRaises(InvalidMessageError):
             ApiRun.from_msgpack_request(msg)
 
@@ -113,7 +122,12 @@ class ApiCallTest(unittest.TestCase):
         with self.assertRaises(InvalidApiCallError):
             ApiRegister(metadata, [None])
 
-        pass
+        with self.assertRaises(InvalidApiCallError):
+            ApiRegister(metadata, [[1, "do_foo", []]])
+
+        with self.assertRaises(InvalidApiCallError):
+            ApiRegister(metadata, [["foo", 1, []]])
+
 
     def test_apirun(self):
         plugin_id = "plugin_id"

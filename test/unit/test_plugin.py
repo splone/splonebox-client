@@ -139,3 +139,12 @@ class PluginTest(unittest.TestCase):
         plug._handle_response(response)
         self.assertEqual(result.get_status(), 1)
         self.assertEqual(result.get_id(), 123)
+
+        result = plug.run("key", "foo", [])
+        run_msg = send_mock.call_args[0][0]
+        response = MResponse(run_msg._msgid)
+        response.response = None
+        response.error = [123, b'error!']
+        self.assertEqual(result.get_status(), 0)
+        plug._handle_response(response)
+        self.assertEqual(result.get_status(), -1)

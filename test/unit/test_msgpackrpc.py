@@ -60,6 +60,10 @@ class MsgpackRpcTest(unittest.TestCase):
         with self.assertRaises(BrokenPipeError):
             rpc.send(m1)
 
+        with self.assertRaises(InvalidMessageError):
+            rpc.send(None)
+
+
     # noinspection PyProtectedMember
     def test_message_callback(self):
         rpc = MsgpackRpc()
@@ -94,6 +98,11 @@ class MsgpackRpcTest(unittest.TestCase):
         self.assertEqual(mock_send.call_args[0][0].error[1],
                          "Could not handle request! not")
 
+        handle_notify.side_effect = TypeError()
+        rpc._message_callback(m_not.pack())
+        self.assertEqual(mock_send.call_args[0][0].error[1],
+                         "Unexpected exception occurred!")
+
         rpc._message_callback(m_res.pack())
         self.assertEqual(mock_send.call_args[0][0].error[1],
                          "Could not handle request! res")
@@ -101,6 +110,15 @@ class MsgpackRpcTest(unittest.TestCase):
         rpc._message_callback(m_req.pack())
         self.assertEqual(mock_send.call_args[0][0].error[1],
                          "Could not handle request! req")
+
+        # handle_notify.side_effect = ConnectionAbortedError()
+        # rpc._message_callback(m_not.pack())
+        # self.assertEqual(mock_send.call_args[0][0].error[1],
+        #                  "Unexpected exception occurred!")
+
+        rpc._message_callback(b'invalid message')
+        self.assertEqual(mock_send.call_args[0][0].error[1],
+                         "Invalid Message Format")
 
     def test_handle_response(self):
         rpc = MsgpackRpc()
