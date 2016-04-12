@@ -300,8 +300,12 @@ class Crypto:
         vouch_payload = b"".join([self.clientshorttermpk,
                                   self.servershorttermpk])
         vouch_nonce = self.safenonce()
-        vouch_box = libnacl.crypto_box(vouch_payload, vouch_nonce,
-                        self.serverlongtermpk, self.clientlongtermpk)
+        vouch_nonce_expanded = struct.pack("<8s16s", b"splonePV", vouch_nonce)
+
+        vouch_box = libnacl.crypto_box(vouch_payload,
+                                       vouch_nonce_expanded,
+                                       self.serverlongtermpk,
+                                       self.clientlongtermpk)
 
         self.crypto_nonce_update()
 
