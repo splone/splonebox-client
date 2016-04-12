@@ -309,7 +309,7 @@ class Crypto:
 
         self.crypto_nonce_update()
 
-        payload = b"".join([self.self.clientlongtermpk, self.nonce,
+        payload = b"".join([self.clientlongtermpk, vouch_nonce,
                             vouch_box])
         payload_nonce = struct.pack("<16sQ", b"splonebox-client", self.nonce)
         payload_box = libnacl.crypto_box(payload, payload_nonce,
