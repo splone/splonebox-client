@@ -17,12 +17,14 @@ see <http://www.gnu.org/licenses/>.
 
 """
 
+from Crypto.Cipher import AES
 import libnacl.utils
 import libnacl
 import threading
 import logging
 import struct
 import os
+
 from splonecli.os.filesystem import open_lock
 from splonecli.os.filesystem import save_sync
 
@@ -47,21 +49,9 @@ def load_key(path: str) -> bytes:
     return key
 
 def crypto_block(data: bytes, k: bytes) -> bytes:
-    v0 = struct.unpack("<Q", data[:8])
-    v1 = struct.unpack("<Q", data[8:16])
-    k0 = struct.unpack("<Q", k[:8])
-    k1 = struct.unpack("<Q", k[8:16])
-    k2 = struct.unpack("<Q", k[16:24])
-    k3 = struct.unpack("<Q", k[24:32])
-    blocksum = 0
-    delta = 11400714819323198485
-
-    for i in range(0, 32):
-        blocksum += delta
-        v0 += ((v1 << 7) + k0) ^ (v1 + blocksum) ^ ((v1 >> 12) + k1)
-        v1 += ((v0 << 16) + k2) ^ (v0 + blocksum) ^ ((v0 >> 8) + k3)
-
-    return struct.pack("<QQ", v0, v1)
+    iv = libnacl.randombytes(AES.block_size)
+    cipher = AES.new(k, AES.MODE_CBC, iv)
+    return cipher.encrypt(data)
 
 class Crypto:
     """Crypto stack implementation of splone crypto protocol
