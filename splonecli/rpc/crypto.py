@@ -86,7 +86,7 @@ class Crypto:
     @classmethod
     def by_path(cls,
         clientlongtermpk = '.keys/client-long-term.pub',
-        clientlongtermsk = '.keys/client-long-term.priv',
+        clientlongtermsk = '.keys/client-long-term',
         serverlongtermpk = '.keys/server-long-term.pub'):
         """
         Constructor to create a Crypto class by passing path to keys
