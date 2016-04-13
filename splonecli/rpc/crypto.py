@@ -195,7 +195,11 @@ class Crypto:
         * 8 bytes: a client-selected compressed nonce in little-endian form.
                    This compressed nonce is implicitly prefixed by
                    "splonebox-server" to form a 24-byte nonce.
-        * 72 bytes: length signed with client's short term private key C'
+        * 24 bytes: a cryptographic box encrypted and authenticated to the
+                    client's short-term public key C' from the server's short-term public
+                    key S' using this 24-byte nonce. The M-byte plaintext inside the box has
+                    the following contents:
+            * 8 bytes: length
         * n bytes: a cryptographic box encrypted and authenticated to the
                     client's short-term public key C' from the server's
                     short-term public key S' using this 24-byte nonce. The
