@@ -256,18 +256,18 @@ class Crypto:
     def _verify_cookiepacket(self, cookiepacket) -> bytes:
         """
         Validates the cookie packet and extracts the cookie. In case
-        of being invalid the function raises a PacketInvalidException.
+        of being invalid the function raises a InvalidPacketException.
 
         cookiepacket -- actual cookie packet sent by server
         result -- returns cookie extracted
 
         """
         if not len(cookiepacket) == 168:
-            raise PacketInvalidException("Cookie packet has invalid length.")
+            raise InvalidPacketException("Cookie packet has invalid length.")
 
         identifier, = struct.unpack("<8s", cookiepacket[:8])
         if identifier.decode('ascii') != "rZQTd2nC":
-            raise PacketInvalidException("Received identifier is bad")
+            raise InvalidPacketException("Received identifier is bad")
 
         nonce, = struct.unpack("<16s", cookiepacket[8:24])
         nonceexpanded = struct.pack("<8s16s", b"splonePK", nonce)
