@@ -175,12 +175,9 @@ class Crypto:
         nonce, = struct.unpack("<Q", data[8:16])
         nonceexpanded = struct.pack("<16sQ", b"splonebox-server", nonce)
 
-        length_boxed, = struct.unpack("<Q", data[16:40])
-
         try:
-            data = libnacl.crypto_box_open(length_boxed, nonceexpanded,
-                                             self.serverlongtermpk,
-                                             self.clientshorttermsk)
+            data = libnacl.crypto_box_open(data[16:40], nonceexpanded,
+                      self.serverlongtermpk, self.clientshorttermsk)
             orig, = struct.unpack("<Q", data)
 
         except ValueError as e:
