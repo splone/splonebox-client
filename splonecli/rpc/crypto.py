@@ -191,16 +191,19 @@ class Crypto:
         :raises: :CryptError on failure
         """
         self.crypto_nonce_update()
+        length = struct.pack("<Q", 56 + len(data))
+        nonce = struct.pack("<16sQ", b"splonebox-client", self.nonce)
+        length_boxed = libnacl.crypto_box(length, nonce, self.servershorttermpk,
+                                self.clientshorttermsk)
 
+        self.crypto_nonce_update()
         identifier = struct.pack("<8s", b"oqQN2kaM")
         nonce = struct.pack("<16sQ", b"splonebox-client", self.nonce)
         box = libnacl.crypto_box(data, nonce, self.servershorttermpk,
                                  self.clientshorttermsk)
-        nonce = struct.pack("<Q", self.nonce)
-        length = struct.pack("<Q", 24 + len(box))
-        length_signed = libnacl.crypto_sign(length, self.clientshorttermsk)
+        nonce = struct.pack("<Q", self.nonce - 2)
 
-        return b"".join([identifier, length_signed, nonce, box])
+        return b"".join([identifier, nonce, length_boxed, box])
 
     def crypto_hello(self) -> bytes:
         """Create a client tunnel packet consisting of:
