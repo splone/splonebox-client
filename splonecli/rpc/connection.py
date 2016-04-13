@@ -110,7 +110,7 @@ class Connection:
             logging.error("Crypto handshake failed {s}".format(str(e)))
             raise
 
-    def listen(self, msg_callback, new_thread=True):
+    def listen(self, msg_callback, new_thread):
         """ Wrapper for the _listen function
 
         (mostly to make tests easier to implement,
