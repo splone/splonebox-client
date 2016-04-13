@@ -164,7 +164,7 @@ class Crypto:
         returns -- packet length
 
         """
-        if not len(data) >= 81:
+        if not len(data) >= 40:
             raise InvalidPacketException("Message to short")
 
         identifier, = struct.unpack("<8s", data[:8])
@@ -172,10 +172,15 @@ class Crypto:
         if identifier.decode('ascii') != "rZQTd2nM":
             raise InvalidPacketException("Received identifier is bad")
 
-        length, = struct.unpack("<Q", data[8:80])
+        nonce, = struct.unpack("<Q", data[8:16])
+        nonceexpanded = struct.pack("<16sQ", b"splonebox-server", nonce)
+
+        length_boxed, = struct.unpack("<Q", data[16:40])
 
         try:
-            data = libnacl.crypto_sign_open(length, self.servershorttermpk)
+            data = libnacl.crypto_box_open(length_boxed, nonceexpanded,
+                                             self.serverlongtermpk,
+                                             self.clientshorttermsk)
             orig, = struct.unpack("<Q", data)
 
         except ValueError as e:
