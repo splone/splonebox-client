@@ -295,8 +295,6 @@ class Crypto:
         :return: client initiate packet
         """
         cookie = self._verify_cookiepacket(cookiepacket)
-        self.crypto_nonce_update()
-
         vouch_payload = b"".join([self.clientshorttermpk,
                                   self.servershorttermpk])
         vouch_nonce = self.safenonce()
@@ -305,12 +303,13 @@ class Crypto:
         vouch_box = libnacl.crypto_box(vouch_payload,
                                        vouch_nonce_expanded,
                                        self.serverlongtermpk,
-                                       self.clientlongtermpk)
-
-        self.crypto_nonce_update()
+                                       self.clientlongtermsk)
 
         payload = b"".join([self.clientlongtermpk, vouch_nonce,
                             vouch_box])
+
+        self.crypto_nonce_update()
+
         payload_nonce = struct.pack("<16sQ", b"splonebox-client", self.nonce)
         payload_box = libnacl.crypto_box(payload, payload_nonce,
                             self.servershorttermpk, self.clientshorttermsk)
