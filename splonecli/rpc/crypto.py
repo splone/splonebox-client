@@ -177,7 +177,7 @@ class Crypto:
 
         try:
             data = libnacl.crypto_box_open(data[16:40], nonceexpanded,
-                      self.serverlongtermpk, self.clientshorttermsk)
+                      self.servershorttermpk, self.clientshorttermsk)
             orig, = struct.unpack("<Q", data)
 
         except ValueError as e:
@@ -363,9 +363,9 @@ class Crypto:
         nonce, = struct.unpack("<Q", data[8:16])
         self._verify_nonce(nonce)
 
-        nonceexpanded = struct.pack("<16sQ", b"splonebox-server", nonce)
+        nonceexpanded = struct.pack("<16sQ", b"splonebox-server", nonce + 2)
         try:
-            plain = libnacl.crypto_box_open(data[:length], nonceexpanded,
+            plain = libnacl.crypto_box_open(data[40:length], nonceexpanded,
                                             self.servershorttermpk,
                                             self.clientshorttermsk)
         except ValueError as e:
