@@ -31,6 +31,7 @@ from splonecli.os.filesystem import save_sync
 counterlow = 0
 counterhigh = 0
 keyloaded = False
+noncekey = 0
 
 class InvalidPacketException(Exception):
     pass
@@ -119,28 +120,37 @@ class Crypto:
         global keyloaded
         global counterlow
         global counterhigh
+        global noncekey
 
-        if not keyloaded:
-            fdlock = open_lock(".keys/lock")
+        fdlock = open_lock(".keys/lock")
 
-            noncekey = load_key(".keys/noncekey")
+        try:
+
+            if not keyloaded:
+
+                noncekey = load_key(".keys/noncekey")
+                keyloaded = True
+
+            if counterlow >= counterhigh:
+
+                noncecounter = load_key(".keys/noncecounter")
+                counterlow, = struct.unpack("<Q", noncecounter)
+                counterhigh = counterlow + 1
+
+                data = struct.pack("<Q", counterhigh)
+                save_sync(".keys/noncecounter", data)
+
+            data = struct.pack("<Q8s", counterlow, libnacl.randombytes(8))
+            counterlow += 1
+
+            nonce = crypto_block(data, noncekey)
+
+        except:
+            logging.error("Failed to generated safe nonce!")
+            raise
+
+        finally:
             os.close(fdlock)
-            keyloaded = True
-
-        if counterlow >= counterhigh:
-            fdlock = open_lock(".keys/lock")
-
-            noncecounter = load_key(".keys/noncecounter")
-            counterlow, = struct.unpack("<Q", noncecounter)
-            counterhigh = counterlow + 1
-
-            data = struct.pack("<Q", counterhigh)
-            save_sync(".keys/noncecounter", data)
-
-        data = struct.pack("<Q8s", counterlow, libnacl.randombytes(8))
-        counterlow += 1
-
-        nonce = crypto_block(data, noncekey)
 
         return nonce
 
