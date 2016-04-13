@@ -18,7 +18,7 @@ def collect_tests(suite: unittest.TestSuite):
 
 class ConnectionTest(unittest.TestCase):
     def test_connect(self):
-        con = Connection(libnacl.crypto_box_keypair()[0])
+        con = Connection()
 
         con._init_crypto = mock.Mock()
         mock_socket = mocks.connection_socket(con)
@@ -45,18 +45,15 @@ class ConnectionTest(unittest.TestCase):
             con.connect("127.0.0.1", "bla", None, listen=False)
 
     def test_send_message(self):
-        con = Connection(libnacl.crypto_box_keypair()[0])
+        con = Connection()
 
         with self.assertRaises(BrokenPipeError):
             con.send_message(b'123')
 
     def test_listen(self):
         serverpk, serversk = libnacl.crypto_box_keypair()
-        con = Connection(serverlongtermpk=serverpk)
+        con = Connection()
         con._connected = True
-        con.crypto_context.servershorttermpk = serverpk
-        con.crypto_context.clientshorttermpk, \
-            con.crypto_context.clientshorttermsk = libnacl.crypto_box_keypair()
 
         # prepare single valid message
         data = b'123'
