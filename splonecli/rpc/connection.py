@@ -27,15 +27,7 @@ from splonecli.rpc.crypto import InvalidPacketException
 
 
 class Connection:
-    def __init__(self,
-                 serverlongtermpk=None,
-                 serverlongtermpk_path='.keys/server-long-term.pub'):
-        """
-        :param serverlongtermpk: The server's longterm key
-        (if set, path is ignored!)
-        :param serverlongtermpk_path: path to file containing the
-        server's longterm key
-        """
+    def __init__(self):
         self._buffer_size = pow(1024, 2)  # This is defined my msgpack
         self._ip = None
         self._port = None
