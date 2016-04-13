@@ -86,9 +86,9 @@ class Crypto:
 
     @classmethod
     def by_path(cls,
-        clientlongtermpk = '.keys/client-long-term.pub',
-        clientlongtermsk = '.keys/client-long-term',
-        serverlongtermpk = '.keys/server-long-term.pub'):
+        clientlongtermpk='.keys/client-long-term.pub',
+        clientlongtermsk='.keys/client-long-term',
+        serverlongtermpk='.keys/server-long-term.pub'):
         """
         Constructor to create a Crypto class by passing path to keys
         instead of passing keys directly.
@@ -177,7 +177,8 @@ class Crypto:
 
         try:
             data = libnacl.crypto_box_open(data[16:40], nonceexpanded,
-                      self.servershorttermpk, self.clientshorttermsk)
+                                           self.servershorttermpk,
+                                           self.clientshorttermsk)
             orig, = struct.unpack("<Q", data)
 
         except ValueError as e:
