@@ -183,7 +183,8 @@ class Crypto:
 
         except (ValueError, libnacl.CryptError) as e:
             logging.error(e)
-            raise InvalidPacketException("Failed to verify length of message packet!")
+            raise InvalidPacketException(
+                    "Failed to verify length of message packet!")
 
         return orig
 
@@ -210,6 +211,7 @@ class Crypto:
         self.crypto_nonce_update()
         length = struct.pack("<Q", 56 + len(data))
         nonce = struct.pack("<16sQ", b"splonebox-client", self.nonce)
+
         length_boxed = libnacl.crypto_box(length, nonce, self.servershorttermpk,
                                 self.clientshorttermsk)
 
