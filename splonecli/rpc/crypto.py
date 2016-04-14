@@ -181,7 +181,7 @@ class Crypto:
                                            self.clientshorttermsk)
             orig, = struct.unpack("<Q", data)
 
-        except ValueError as e:
+        except (ValueError, libnacl.CryptError) as e:
             logging.error(e)
             raise InvalidPacketException("Failed to verify length of message packet!")
 
@@ -276,7 +276,7 @@ class Crypto:
             payload = libnacl.crypto_box_open(cookiepacket[24:], nonceexpanded,
                                               self.serverlongtermpk,
                                               self.clientshorttermsk)
-        except ValueError as e:
+        except (ValueError, libnacl.CryptError) as e:
             logging.error(e)
             raise InvalidPacketException("Failed to open cookie packet box!")
 
