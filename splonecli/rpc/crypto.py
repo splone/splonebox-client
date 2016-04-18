@@ -371,7 +371,7 @@ class Crypto:
             plain = libnacl.crypto_box_open(data[40:length], nonceexpanded,
                                             self.servershorttermpk,
                                             self.clientshorttermsk)
-        except ValueError as e:
+        except (ValueError, libnacl.CryptError) as e:
             logging.error(e)
             raise InvalidPacketException("Failed to unbox message!")
 
