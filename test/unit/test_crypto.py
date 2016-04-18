@@ -1,5 +1,5 @@
 from random import randint
-import unittest.mock as mock
+from unittest import mock
 import unittest
 import libnacl
 import struct
@@ -176,63 +176,56 @@ class CryptoTest(unittest.TestCase):
         cookie_extracted = struct.unpack("<96s", data[8:104])[0]
         self.assertEqual(cookie_extracted, cookie)
 
+        nonce = struct.unpack("Q", data[104:112])[0]
+        nonce_expanded = struct.pack("<16sQ", b"splonebox-client", nonce)
+        payload = libnacl.crypto_box_open(data[112:], nonce_expanded,
+            self.crypt.clientshorttermpk, self.servershorttermsk)
 
+        clientlongtermpk = struct.unpack("<32s", payload[:32])[0]
+        self.assertEqual(clientlongtermpk, self.crypt.clientlongtermpk)
 
-        # invalid message length
+        nonce = struct.unpack("16s", payload[32:48])[0]
+        nonce_expanded = struct.pack("<8s16s", b"splonePV", nonce)
+        vouch = libnacl.crypto_box_open(payload[48:], nonce_expanded,
+            self.crypt.clientlongtermpk, self.serverlongtermsk)
 
-        # invalid identifier
+        self.assertEqual(vouch[:32], self.crypt.clientshorttermpk)
+        self.assertEqual(vouch[32:], self.crypt.servershorttermpk)
 
-        # invalid nonce
-
-    def test_crypto_read(self):
-        serverpk, serversk = libnacl.crypto_box_keypair()
-        crypt = Crypto(serverlongtermpk=serverpk)
-        crypt.clientshorttermpk, \
-            crypt.clientshorttermsk = libnacl.crypto_box_keypair()
-        crypt.servershorttermpk = serverpk
-
-        data = b'Hello World'
-        identifier = struct.pack("<8s", b"rZQTd2nM")
-        nonce = struct.pack("<16sQ", b"splonebox-server", 1234)
-        box = libnacl.crypto_box(data, nonce, crypt.clientshorttermpk,
-                                 serversk)
-        nonce = struct.pack("<Q", 1234)
-        length = struct.pack("<Q", 24 + len(box))
-
-        msg = b"".join([identifier, length, nonce, box])
-        content = crypt.crypto_read(msg)
-        self.assertEqual(data, content)
-
-        # repeating nonce
-        msg = b"".join([identifier, length, nonce, box])
-        with self.assertRaises(ValueError):
-            crypt.crypto_read(msg)
-
-        # invalid identifier
-        crypt.received_nonce = 0
-        identifier = struct.pack("<8s", b"invalid")
-        msg = b"".join([identifier, length, nonce, box])
-        with self.assertRaises(ValueError):
-            crypt.crypto_read(msg)
-        identifier = struct.pack("<8s", b"rZQTd2nM")
-
-        # invalid length
-        crypt.received_nonce = 0
-        length = struct.pack("<Q", 1)
-        msg = b"".join([identifier, length, nonce, box])
-        with self.assertRaises(libnacl.CryptError):
-            crypt.crypto_read(msg)
-        length = struct.pack("<Q", 24 + len(box))
-
-        # Unmaching nonce
-        crypt.received_nonce = 0
-        nonce = struct.pack("<Q", 1112)
-        msg = b"".join([identifier, length, nonce, box])
-        with self.assertRaises(libnacl.CryptError):
-            crypt.crypto_read(msg)
-
-    def test_crypto_nonce_update(self):
+    def test_070_crypto_nonce_update(self):
         nonce = self.crypt.nonce
         self.crypt.crypto_nonce_update()
         self.assertTrue(nonce % 2 == 1)
         self.assertEqual(nonce + 2, self.crypt.nonce)
+
+    def test_080_crypto_read(self):
+        """ Verifying that crypto_read properly handles message packets. """
+        nonce_length = 6
+
+        data = libnacl.randombytes(10)
+        nonce_expanded = struct.pack("<16sQ", b"splonebox-server",
+            nonce_length + 2)
+        box = libnacl.crypto_box(data, nonce_expanded,
+            self.crypt.clientshorttermpk, self.servershorttermsk)
+
+        self.crypt.crypto_verify_length = mock.Mock(return_value=40 + len(box))
+        self.crypt._verify_nonce = mock.Mock()
+
+        packet = b''.join([bytearray(8), struct.pack("<Q", nonce_length),
+            bytearray(24), box])
+        payload = self.crypt.crypto_read(packet)
+
+        self.assertEqual(payload, data)
+
+        # corrupt box
+        packet = b''.join([bytearray(8), struct.pack("<Q", nonce_length),
+            bytearray(24), libnacl.randombytes(len(box))])
+        self.assertRaises(InvalidPacketException,
+                self.crypt.crypto_read, packet)
+
+        # corrupt nonce
+        packet = b''.join([bytearray(8), libnacl.randombytes(8),
+            bytearray(24), box])
+        self.assertRaises(InvalidPacketException,
+                self.crypt.crypto_read, packet)
+
