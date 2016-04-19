@@ -43,7 +43,7 @@ class LocalCall(unittest.TestCase):
 
         RemoteFunction(foo)
 
-        plug = Plugin("abc", "foo", "bar", "bob", "alice", serverlongtermpk="")
+        plug = Plugin("abc", "foo", "bar", "bob", "alice")
         mocks.plug_rpc_send(plug)  # ignore responses here
 
         mock_send = mocks.rpc_send(plug._rpc)

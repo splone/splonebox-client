@@ -35,9 +35,7 @@ class Plugin:
                  desc: str,
                  author: str,
                  licence: str,
-                 debug=False,
-                 serverlongtermpk=None,
-                 serverlongtermpk_path='.keys/server-long-term.pub'):
+                 debug=False):
         """
         :param plugin_id: api key (make sure it was added to the core)
         :param name: Name of the plugin
@@ -53,8 +51,7 @@ class Plugin:
         # [<plugin_id>, <name>, <description>, <author>, <license>]
         self._metadata = [plugin_id, name, desc, author, licence]
 
-        self._rpc = MsgpackRpc(serverlongtermpk=serverlongtermpk,
-                               serverlongtermpk_path=serverlongtermpk_path)
+        self._rpc = MsgpackRpc()
         # register run function @ rpc dispatcher
         self._rpc.register_function(self._handle_run, "run")
 

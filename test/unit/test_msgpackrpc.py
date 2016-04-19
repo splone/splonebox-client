@@ -25,16 +25,9 @@ from splonecli.rpc.msgpackrpc import MsgpackRpc
 from test import mocks
 
 
-def collect_tests(suite: unittest.TestSuite):
-    suite.addTest(MsgpackRpcTest("test_send"))
-    suite.addTest(MsgpackRpcTest("test_message_callback"))
-    suite.addTest(MsgpackRpcTest("test_handle_response"))
-    pass
-
-
 class MsgpackRpcTest(unittest.TestCase):
     def test_send(self):
-        rpc = MsgpackRpc(serverlongtermpk="")
+        rpc = MsgpackRpc()
         con_send_mock = mocks.rpc_connection_send(rpc)
         m1 = MRequest()
 
@@ -62,7 +55,7 @@ class MsgpackRpcTest(unittest.TestCase):
 
     # noinspection PyProtectedMember
     def test_message_callback(self):
-        rpc = MsgpackRpc(serverlongtermpk="")
+        rpc = MsgpackRpc()
 
         dispatch = mocks.rpc_dispatch(rpc, "run")
         m_req = MRequest()
@@ -103,7 +96,7 @@ class MsgpackRpcTest(unittest.TestCase):
                          "Could not handle request! req")
 
     def test_handle_response(self):
-        rpc = MsgpackRpc(serverlongtermpk="")
+        rpc = MsgpackRpc()
         response = MResponse(1234)
         response.response = []
         mock_callback = Mock()

@@ -43,7 +43,7 @@ class RemoteCallTest(unittest.TestCase):
             pass
 
         RemoteFunction(fun2)
-        plug = Plugin("abc", "foo", "bar", "bob", "alice", serverlongtermpk="")
+        plug = Plugin("abc", "foo", "bar", "bob", "alice")
         mock_send = mocks.rpc_connection_send(plug._rpc)
 
         plug.register(blocking=False)
@@ -60,7 +60,7 @@ class RemoteCallTest(unittest.TestCase):
         RemoteFunction.remote_functions = {}
 
     def test_run_functional(self):
-        plug = Plugin("abc", "foo", "bar", "bob", "alice", serverlongtermpk="")
+        plug = Plugin("abc", "foo", "bar", "bob", "alice")
         mock_send = mocks.rpc_connection_send(plug._rpc)
 
         plug.run("plugin_id", "function", [1, "hi", 42.317, b'hi'])
@@ -75,12 +75,7 @@ class RemoteCallTest(unittest.TestCase):
     pass
 
     def test_connect_functional(self):
-        plug = Plugin("abc",
-                      "foo",
-                      "bar",
-                      "bob",
-                      "alice",
-                      serverlongtermpk=libnacl.crypto_box_keypair()[0])
+        plug = Plugin("abc", "foo", "bar", "bob", "alice")
 
         mock_sock = mocks.connection_socket(plug._rpc._connection)
         plug._rpc._connection.listen = Mock()
