@@ -26,14 +26,6 @@ from splonecli.rpc.message import MResponse, MRequest
 from splonecli.api.remotefunction import RemoteFunction
 
 
-def collect_tests(suite: unittest.TestSuite):
-    suite.addTest(PluginTest('test_register'))
-    suite.addTest(PluginTest('test_connect'))
-    suite.addTest(PluginTest('test_run'))
-    suite.addTest(PluginTest('test_handle_response'))
-    suite.addTest(PluginTest('test_handle_run'))
-
-
 class PluginTest(unittest.TestCase):
     def test_register(self):
         plug = Plugin("abc", "foo", "bar", "bob", "alice")

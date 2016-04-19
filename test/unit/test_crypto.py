@@ -9,16 +9,6 @@ from splonecli.rpc.crypto import Crypto
 from splonecli.rpc.crypto import InvalidPacketException
 
 
-def collect_tests(suite: unittest.TestSuite):
-    suite.addTest(CryptoTest("test_crypto_random_mod"))
-    suite.addTest(CryptoTest("test_load_key"))
-    suite.addTest(CryptoTest("test_crypto_tunnel"))
-    suite.addTest(CryptoTest("test_crypto_nonce_update"))
-    suite.addTest(CryptoTest("test_crypto_tunnel_read"))
-    suite.addTest(CryptoTest("test_crypto_write"))
-    suite.addTest(CryptoTest("test_crypto_read"))
-
-
 class CryptoTest(unittest.TestCase):
 
     @classmethod

@@ -26,12 +26,6 @@ from splonecli.rpc.message import MRequest, MResponse
 from test import mocks
 
 
-def collect_tests(suite: unittest.TestSuite):
-    suite.addTest(CompleteCall("test_complete_run"))
-    suite.addTest(CompleteCall("test_complete_register"))
-    pass
-
-
 class CompleteCall(unittest.TestCase):
     def test_complete_run(self):
         # In this test a plugin is created and is calling itself.

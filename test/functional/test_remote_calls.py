@@ -29,12 +29,6 @@ from splonecli.api.remotefunction import RemoteFunction
 from test import mocks
 
 
-def collect_tests(suite: unittest.TestSuite):
-    suite.addTest(RemoteCallTest("test_register_functional"))
-    suite.addTest(RemoteCallTest("test_run_functional"))
-    suite.addTest(RemoteCallTest("test_connect_functional"))
-
-
 class RemoteCallTest(unittest.TestCase):
     def test_register_functional(self):
         def fun2(a: ctypes.c_bool, b: ctypes.c_byte, c: ctypes.c_uint64, d:

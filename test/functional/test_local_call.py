@@ -27,11 +27,6 @@ from splonecli.api.remotefunction import RemoteFunction
 from test import mocks
 
 
-def collect_tests(suite: unittest.TestSuite):
-    suite.addTest(LocalCall("test_run_incoming"))
-    pass
-
-
 class LocalCall(unittest.TestCase):
     def test_run_incoming(self):
         mock_foo = Mock()
