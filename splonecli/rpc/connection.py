@@ -160,14 +160,15 @@ class Connection:
                     logging.warning("Connection was closed by server!")
                     self._connected.clear()
                     raise  # only raise on unintentional disconnect
+
                 return
 
             recv_buffer += data
 
             try:
                 msg_length = self.crypto_context.crypto_verify_length(recv_buffer)
-
-                while msg_length >= len(recv_buffer):
+                while (msg_length >= len(recv_buffer) and
+                    len(recv_buffer) > 0):
                     plain = self.crypto_context.crypto_read(
                         recv_buffer[:msg_length])
                     msg_callback(plain)
