@@ -151,8 +151,10 @@ class Connection:
         while self._connected.is_set():
             try:
                 data = self._socket.recv(self._buffer_size)
+
                 if data == b'':
                     raise BrokenPipeError()
+
             except (BrokenPipeError, OSError, ConnectionResetError):
                 self.is_listening.release()
 
