@@ -1,137 +1,169 @@
-import socket
+from multiprocessing import Lock
+from unittest import mock
+from threading import Thread
 import unittest
 import libnacl
-import unittest.mock as mock
+import socket
 import struct
-from threading import Thread
-from multiprocessing import Lock
 
 from splonecli.rpc.connection import Connection
 from test import mocks
 
-
-def collect_tests(suite: unittest.TestSuite):
-    suite.addTest(ConnectionTest("test_connect"))
-    suite.addTest(ConnectionTest("test_send_message"))
-    suite.addTest(ConnectionTest("test_listen"))
-
-
 class ConnectionTest(unittest.TestCase):
-    def test_connect(self):
-        con = Connection()
 
-        con._init_crypto = mock.Mock()
-        mock_socket = mocks.connection_socket(con)
+    @classmethod
+    def setUpClass(cls):
+        cls.con = Connection()
+        cls.con._socket = mock.Mock(spec=socket.socket)
 
-        con.connect("127.0.0.1", 6666, None, listen=False)
-        mock_socket.connect.assert_called_with((socket.gethostbyname(
+    def test_010_connect(self):
+        self.con._init_crypto = mock.Mock()
+
+        self.con.connect("127.0.0.1", 6666, None, listen=False)
+        self.con._socket.connect.assert_called_with((socket.gethostbyname(
             "127.0.0.1"), 6666))
 
         some_callback = mock.Mock()
         listen_mock = mocks.Mock()
-        con.listen = listen_mock
+        self.con.listen = listen_mock
 
-        con.connect("127.0.0.1", 6666, some_callback, listen=True)
+        self.con.connect("127.0.0.1", 6666, some_callback, listen=True)
         listen_mock.assert_called_with(some_callback, new_thread=True)
 
-        mock_socket.connect.side_effect = ConnectionRefusedError
+        self.con._socket.connect.side_effect = ConnectionRefusedError
         with self.assertRaises(ConnectionRefusedError):
-            con.connect("127.0.0.1", 6666, None, listen=False)
+            self.con.connect("127.0.0.1", 6666, None, listen=False)
 
         with self.assertRaises(ConnectionError):
-            con.connect(1, 1234, None, listen=False)
+            self.con.connect(1, 1234, None, listen=False)
 
         with self.assertRaises(ConnectionError):
-            con.connect("127.0.0.1", "bla", None, listen=False)
+            self.con.connect("127.0.0.1", "bla", None, listen=False)
 
-    def test_send_message(self):
-        con = Connection()
+    def test_020_send_message(self):
+        """ Verify that the box returned by crypto_write is sent. """
+        self.con.crypto_context.crypto_established.set()
 
-        with self.assertRaises(BrokenPipeError):
-            con.send_message(b'123')
+        for data in [b"foobar", libnacl.randombytes(10), b""]:
+            self.con.crypto_context.crypto_write = mock.Mock(
+                return_value = data)
 
-    def test_listen(self):
-        serverpk, serversk = libnacl.crypto_box_keypair()
-        con = Connection()
-        con._connected = True
+            self.con.send_message(data)
+            self.con._socket.sendall.assert_called_with(data)
 
-        # prepare single valid message
-        data = b'123'
-        identifier = struct.pack("<8s", b"rZQTd2nM")
-        nonce_exp = struct.pack("<16sQ", b"splonebox-server", 4444)
-        box = libnacl.crypto_box(
-            data, nonce_exp, con.crypto_context.clientshorttermpk, serversk)
-        nonce = struct.pack("<Q", 4444)
-        length = struct.pack("<Q", 24 + len(box))
-        msg = b"".join([identifier, length, nonce, box])
+    def test_030_listen_one_packet(self):
+        """
+        Verify segmentation handling by method '_listing' with one
+        packets.
 
-        execute_lock = Lock()
-        execute_lock.acquire()
-        mock_callback = mock.Mock()
+        """
+        con = self.con
+        con._connected.set()
+        buf = mocks.connection_socket_fake_recv(con)
 
-        def foo(data):
-            mock_callback(data)
-            execute_lock.release()
+        data = bytearray(10)
 
-        socket_recv_q = mocks.connection_socket_fake_recv(con)
-        thread = Thread(target=con._listen, args=(foo, ))
+        # the callback function called after decrypting packet
+        callback = mock.Mock()
+
+        # mock length
+        crypto_verify = mock.Mock(return_value=len(data))
+        con.crypto_context.crypto_verify_length = crypto_verify
+
+        # mock crypto_read function to return full data at once
+        crypto_read = mock.Mock()
+        crypto_read.side_effect = [data]
+        con.crypto_context.crypto_read = crypto_read
+
+        # put data on to mocked socket
+        buf.put(data)
+
+        thread = Thread(target=con._listen, args=(callback, ))
+        thread.daemon = True
         thread.start()
+        con._connected.clear()
 
-        socket_recv_q.put(msg)
-        execute_lock.acquire()
-        mock_callback.assert_called_with(b'123')
+        # verify that callback is called
+        callback.assert_called_with(data)
 
-        # simulates a message arriving in two pieces
-        mock_callback.reset_mock()
-        data = bytearray(100)
-        nonce_exp = struct.pack("<16sQ", b"splonebox-server", 8888)
-        nonce = struct.pack("<Q", 8888)
-        box = libnacl.crypto_box(
-            data, nonce_exp, con.crypto_context.clientshorttermpk, serversk)
-        length = struct.pack("<Q", 24 + len(box))
-        msg = b"".join([identifier, length, nonce, box])
+        # verify that crypto_verify is called with incomming packet
+        crypto_verify.assert_has_calls([mock.call(data)])
 
-        size = 24 + len(box)
-        socket_recv_q.put(msg[:int(size/2)])
-        socket_recv_q.put(msg[int(size/2):size])
-        execute_lock.acquire()
-        mock_callback.assert_called_with(data)
+        # verify that crypto_read is called with incoming data
+        crypto_read.assert_has_calls([mock.call(data)])
 
-        # simulates two messages arriving at the same time
-        mock_callback.reset_mock()
-        data1 = b"message1"
-        nonce_exp = struct.pack("<16sQ", b"splonebox-server", 8890)
-        nonce = struct.pack("<Q", 8890)
-        box = libnacl.crypto_box(
-            data1, nonce_exp, con.crypto_context.clientshorttermpk, serversk)
-        length = struct.pack("<Q", 24 + len(box))
-        msg1 = b"".join([identifier, length, nonce, box])
 
-        data2 = b"message2"
-        nonce_exp = struct.pack("<16sQ", b"splonebox-server", 8892)
-        nonce = struct.pack("<Q", 8892)
-        box = libnacl.crypto_box(
-            data2, nonce_exp, con.crypto_context.clientshorttermpk, serversk)
-        length = struct.pack("<Q", 24 + len(box))
-        msg2 = b"".join([identifier, length, nonce, box])
+    def test_040_listen_two_packets(self):
+        """
+        Verify segmentation handling by method 'crypto_read' with two
+        packets.
 
-        socket_recv_q.put(msg1+msg2)
+        """
+        con = self.con
+        con._connected.set()
+        buf = mocks.connection_socket_fake_recv(con)
 
-        execute_lock.acquire()
-        mock_callback.assert_called_with(data1)
-        mock_callback.reset_mock()
+        data = bytearray(20)
 
-        execute_lock.acquire()
-        mock_callback.assert_called_with(data2)
-        mock_callback.reset_mock()
+        # the callback function called after decrypting packet
+        callback = mock.Mock()
 
-        # Stop connection thread
-        con._connected = False  # disconnect
-        socket_recv_q.put(b'')  # terminate the connection
+        # mock length
+        crypto_verify = con.crypto_context.crypto_verify_length
+
+        # mock crypto_read function to return full data in two packets
+        crypto_read = con.crypto_context.crypto_read
+
+        middle = int(len(data) / 2)
+        first = data[:middle] # first packet
+        snd = data[middle:] # second packet
+        crypto_read.side_effect = [first, snd]
+
+        # put data on to mocked socket
+        buf.put(data)
+
+        thread = Thread(target=con._listen, args=(callback, ))
+        thread.daemon = False
+        thread.start()
+        con._connected.clear()
+
+        buf.put(b'') # should raise an internal exception
         thread.join()
 
-        # simulate unexpected termination
-        socket_recv_q.put(b'')
-        con._connected = True
-        with self.assertRaises(BrokenPipeError):
-            con._listen(foo)
+        # verify that callback is called
+        callback.assert_has_calls([mock.call(first)])
+
+        # verify that crypto_verify is called with incomming packet
+        crypto_verify.assert_has_calls([mock.call(data)])
+
+        # verify that crypto_read is called with incoming data
+        crypto_read.assert_has_calls([mock.call(data)])
+
+#        # simulates two messages arriving at the same time
+#        mock_callback.reset_mock()
+#        data1 = b"message1"
+#        nonce_exp = struct.pack("<16sQ", b"splonebox-server", 8890)
+#        nonce = struct.pack("<Q", 8890)
+#        box = libnacl.crypto_box(data1, nonce_exp,
+#            self.con.crypto_context.clientshorttermpk, serversk)
+#        length = struct.pack("<Q", 24 + len(box))
+#        msg1 = b"".join([identifier, length, nonce, box])
+#
+#        data2 = b"message2"
+#        nonce_exp = struct.pack("<16sQ", b"splonebox-server", 8892)
+#        nonce = struct.pack("<Q", 8892)
+#        box = libnacl.crypto_box(data2, nonce_exp,
+#            self.con.crypto_context.clientshorttermpk, serversk)
+#        length = struct.pack("<Q", 24 + len(box))
+#        msg2 = b"".join([identifier, length, nonce, box])
+#
+#        socket_recv_q.put(msg1+msg2)
+#
+#        execute_lock.acquire()
+#        mock_callback.assert_called_with(data1)
+#        mock_callback.reset_mock()
+#
+#        execute_lock.acquire()
+#        mock_callback.assert_called_with(data2)
+#        mock_callback.reset_mock()
+
