@@ -17,10 +17,9 @@ see <http://www.gnu.org/licenses/>.
 
 """
 
+import threading
 import logging
 import socket
-from threading import Thread
-from threading import Lock
 
 from splonecli.rpc.crypto import Crypto
 from splonecli.rpc.crypto import InvalidPacketException
@@ -33,8 +32,8 @@ class Connection:
         self._port = None
         self._listen_thread = None
         self._socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        self._connected = False
-        self.is_listening = Lock()
+        self._connected = threading.Event()
+        self.is_listening = threading.Lock()
         self.crypto_context = Crypto.by_path()
 
     def connect(self,
@@ -73,7 +72,7 @@ class Connection:
         self._init_crypto()
         logging.debug("Encryption initialized!")
 
-        self._connected = True
+        self._connected.set()
 
         if listen:
             self.listen(msg_callback, new_thread=listen_on_new_thread)
@@ -113,7 +112,7 @@ class Connection:
         It has one argument of type Message
         """
         if new_thread:
-            self._listen_thread = Thread(target=self._listen,
+            self._listen_thread = threading.Thread(target=self._listen,
                                          args=(msg_callback, ))
             self._listen_thread.start()
             logging.debug("Start listening..")
@@ -123,7 +122,7 @@ class Connection:
 
     def disconnect(self):
         """Closes the connection"""
-        self._connected = False
+        self._connected.clear()
         self._socket.shutdown(socket.SHUT_RDWR)
         self._socket.close()
         self._listen_thread.join()
@@ -133,7 +132,7 @@ class Connection:
 
         :param msg: Message to be sent
         """
-        if not self._connected:
+        if not self._connected.is_set():
             raise BrokenPipeError("Connection has been closed")
 
         self.crypto_context.crypto_established.wait()
@@ -148,16 +147,18 @@ class Connection:
         """
         recv_buffer = b''
         self.is_listening.acquire(True)
-        while self._connected:
+
+        while self._connected.is_set():
             try:
                 data = self._socket.recv(self._buffer_size)
                 if data == b'':
                     raise BrokenPipeError()
             except (BrokenPipeError, OSError, ConnectionResetError):
                 self.is_listening.release()
-                if self._connected:
+
+                if self._connected.is_set():
                     logging.warning("Connection was closed by server!")
-                    self._connected = False
+                    self._connected.clear()
                     raise  # only raise on unintentional disconnect
                 return
 
