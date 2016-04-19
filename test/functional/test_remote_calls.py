@@ -66,8 +66,6 @@ class RemoteCallTest(unittest.TestCase):
         self.assertEqual(b"function", outgoing[3][1])
         self.assertEqual([1, b'hi', 42.317, b'hi'], outgoing[3][2])
 
-    pass
-
     def test_connect_functional(self):
         plug = Plugin("abc", "foo", "bar", "bob", "alice")
 
@@ -81,5 +79,3 @@ class RemoteCallTest(unittest.TestCase):
 
         self.assertEqual(ip, socket.gethostbyname("localhost"))
         self.assertEqual(port, 1234)
-
-    pass

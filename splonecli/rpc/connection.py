@@ -179,9 +179,3 @@ class Connection:
                 logging.warning(e)
 
         self.is_listening.release()
-
-    def is_connected(self) -> bool:
-        """
-        :return: True if connected, False if not
-        """
-        return self._connected
