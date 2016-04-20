@@ -153,7 +153,7 @@ class Connection:
                 data = self._socket.recv(self._buffer_size)
 
                 if data == b'':
-                    raise BrokenPipeError()
+                    break
 
             except (BrokenPipeError, OSError, ConnectionResetError):
                 self.is_listening.release()
@@ -180,4 +180,5 @@ class Connection:
             except InvalidPacketException as e:
                 logging.warning(e)
 
+        self._connected.clear()
         self.is_listening.release()

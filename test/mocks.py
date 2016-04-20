@@ -48,7 +48,7 @@ def connection_socket(con: Connection) -> Mock:
 # noinspection PyProtectedMember
 def connection_socket_fake_recv(con: Connection) -> Queue:
     con._socket = Mock(spec=socket.socket)
-    q = Queue(maxsize=1)
+    q = Queue(maxsize=0)
     con._socket.recv = q.get
     return q
 
