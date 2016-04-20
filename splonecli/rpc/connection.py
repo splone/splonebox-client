@@ -169,7 +169,7 @@ class Connection:
 
             try:
                 msg_length = self.crypto_context.crypto_verify_length(recv_buffer)
-                while (msg_length >= len(recv_buffer) and
+                while (msg_length <= len(recv_buffer) and
                     len(recv_buffer) > 0):
                     plain = self.crypto_context.crypto_read(
                         recv_buffer[:msg_length])
