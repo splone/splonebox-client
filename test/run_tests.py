@@ -54,7 +54,7 @@ suite.addTests([
 
 # functional
 # Deactivate warnings and Logs
-logging.basicConfig(level=logging.ERROR)
+logging.basicConfig(level=logging.CRITICAL)
 
 # Activate Logs
 #logging.basicConfig(level=logging.INFO)
