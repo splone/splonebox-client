@@ -33,6 +33,7 @@ from test.unit import test_crypto
 from test.functional import test_remote_calls
 from test.functional import test_local_call
 from test.functional import test_complete_call
+from test.functional import test_crypto_init
 
 # create test suite
 suite = unittest.TestSuite()
@@ -50,6 +51,7 @@ suite.addTests([
     loader.loadTestsFromModule(test_remote_calls),
     loader.loadTestsFromModule(test_local_call),
     loader.loadTestsFromModule(test_complete_call),
+    loader.loadTestsFromModule(test_crypto_init)
 ])
 
 # functional
