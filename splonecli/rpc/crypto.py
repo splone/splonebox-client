@@ -183,18 +183,18 @@ class Crypto:
             data = libnacl.crypto_box_open(data[16:40], nonceexpanded,
                                            self.servershorttermpk,
                                            self.clientshorttermsk)
-            orig, = struct.unpack("<Q", data)
+            length, = struct.unpack("<Q", data)
 
         except (ValueError, libnacl.CryptError) as e:
             logging.error(e)
             raise InvalidPacketException(
                     "Failed to verify length of message packet!")
 
-        return orig
+        return length
 
     def crypto_write(self, data: bytes) -> bytes:
         """Create a client message packet consisting of:
-        * 8 bytes: the ASCII bytes "rZQTd2nM"
+        * 8 bytes: the ASCII bytes "oqQN2kaM"
         * 8 bytes: a client-selected compressed nonce in little-endian form.
                    This compressed nonce is implicitly prefixed by
                    "splonebox-server" to form a 24-byte nonce.
@@ -216,7 +216,8 @@ class Crypto:
         length = struct.pack("<Q", 56 + len(data))
         nonce = struct.pack("<16sQ", b"splonebox-client", self.nonce)
 
-        length_boxed = libnacl.crypto_box(length, nonce, self.servershorttermpk,
+        length_boxed = libnacl.crypto_box(length, nonce,
+                                          self.servershorttermpk,
                                           self.clientshorttermsk)
 
         self.crypto_nonce_update()
@@ -276,6 +277,9 @@ class Crypto:
             raise InvalidPacketException("Received identifier is bad")
 
         nonce, = struct.unpack("<16s", cookiepacket[8:24])
+
+        # TODO: verify nonce increased from previously received nonces
+
         nonceexpanded = struct.pack("<8s16s", b"splonePK", nonce)
 
         try:
@@ -338,7 +342,8 @@ class Crypto:
 
         payload_nonce = struct.pack("<16sQ", b"splonebox-client", self.nonce)
         payload_box = libnacl.crypto_box(payload, payload_nonce,
-                                         self.servershorttermpk, self.clientshorttermsk)
+                                         self.servershorttermpk,
+                                         self.clientshorttermsk)
 
         identifier = struct.pack("<8s", b"oqQN2kaI")
 
