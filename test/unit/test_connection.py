@@ -1,13 +1,12 @@
-from multiprocessing import Lock
 from unittest import mock
 from threading import Thread
 import unittest
 import libnacl
 import socket
-import struct
 
 from splonecli.rpc.connection import Connection
 from test import mocks
+
 
 class ConnectionTest(unittest.TestCase):
 
@@ -46,7 +45,7 @@ class ConnectionTest(unittest.TestCase):
 
         for data in [b"foobar", libnacl.randombytes(10), b""]:
             self.con.crypto_context.crypto_write = mock.Mock(
-                return_value = data)
+                return_value=data)
 
             self.con.send_message(data)
             self.con._socket.sendall.assert_called_with(data)
@@ -92,7 +91,6 @@ class ConnectionTest(unittest.TestCase):
         # verify that crypto_read is called with incoming data
         crypto_read.assert_has_calls([mock.call(data)])
 
-
     def test_040_listen_two_one_packets(self):
         """ Two crypto messages within one network packet. """
         con = self.con
@@ -101,8 +99,8 @@ class ConnectionTest(unittest.TestCase):
 
         data = b'data1data2'
         middle = int(len(data) / 2)
-        first = data[:middle] # first packet
-        snd = data[middle:] # second packet
+        first = data[:middle]  # first packet
+        snd = data[middle:]    # second packet
 
         # the callback function called after decrypting packet
         callback = mock.Mock()
@@ -144,8 +142,8 @@ class ConnectionTest(unittest.TestCase):
 
         data = b'foooobaaar'
         middle = int(len(data) / 2)
-        first = data[:middle] # first packet
-        snd = data[middle:] # second packet
+        first = data[:middle]  # first packet
+        snd = data[middle:]    # second packet
 
         # the callback function called after decrypting packet
         callback = mock.Mock()
