@@ -113,7 +113,7 @@ class Connection:
         """
         if new_thread:
             self._listen_thread = threading.Thread(target=self._listen,
-                                         args=(msg_callback, ))
+                                                   args=(msg_callback, ))
             self._listen_thread.start()
             logging.debug("Start listening..")
         else:
@@ -170,7 +170,7 @@ class Connection:
             try:
                 msg_length = self.crypto_context.crypto_verify_length(recv_buffer)
                 while (msg_length <= len(recv_buffer) and
-                    len(recv_buffer) > 0):
+                       len(recv_buffer) > 0):
                     plain = self.crypto_context.crypto_read(
                         recv_buffer[:msg_length])
                     msg_callback(plain)

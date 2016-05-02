@@ -52,8 +52,7 @@ class PluginTest(unittest.TestCase):
 
         plug.connect("hostname", 1234)
         connect_rpc_mock.assert_called_with("hostname", 1234)
-
-    # Note: connect is just a wrapper for Connection.connect()
+        # Note: connect is just a wrapper for Connection.connect()
 
     def test_run(self):
         plug = Plugin("abc", "foo", "bar", "bob", "alice")

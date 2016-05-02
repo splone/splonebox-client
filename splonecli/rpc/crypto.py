@@ -33,8 +33,10 @@ counterhigh = 0
 keyloaded = False
 noncekey = 0
 
+
 class InvalidPacketException(Exception):
     pass
+
 
 def load_key(path: str) -> bytes:
     """Load a key from a file
@@ -49,10 +51,12 @@ def load_key(path: str) -> bytes:
 
     return key
 
+
 def crypto_block(data: bytes, k: bytes) -> bytes:
     iv = libnacl.randombytes(AES.block_size)
     cipher = AES.new(k, AES.MODE_CBC, iv)
     return cipher.encrypt(data)
+
 
 class Crypto:
     """Crypto stack implementation of splone crypto protocol
@@ -86,9 +90,9 @@ class Crypto:
 
     @classmethod
     def by_path(cls,
-        clientlongtermpk='.keys/client-long-term.pub',
-        clientlongtermsk='.keys/client-long-term',
-        serverlongtermpk='.keys/server-long-term.pub'):
+                clientlongtermpk='.keys/client-long-term.pub',
+                clientlongtermsk='.keys/client-long-term',
+                serverlongtermpk='.keys/server-long-term.pub'):
         """
         Constructor to create a Crypto class by passing path to keys
         instead of passing keys directly.
@@ -213,7 +217,7 @@ class Crypto:
         nonce = struct.pack("<16sQ", b"splonebox-client", self.nonce)
 
         length_boxed = libnacl.crypto_box(length, nonce, self.servershorttermpk,
-                                self.clientshorttermsk)
+                                          self.clientshorttermsk)
 
         self.crypto_nonce_update()
         identifier = struct.pack("<8s", b"oqQN2kaM")
@@ -334,7 +338,7 @@ class Crypto:
 
         payload_nonce = struct.pack("<16sQ", b"splonebox-client", self.nonce)
         payload_box = libnacl.crypto_box(payload, payload_nonce,
-                            self.servershorttermpk, self.clientshorttermsk)
+                                         self.servershorttermpk, self.clientshorttermsk)
 
         identifier = struct.pack("<8s", b"oqQN2kaI")
 

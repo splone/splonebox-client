@@ -20,6 +20,7 @@ see <http://www.gnu.org/licenses/>.
 import os
 import fcntl
 
+
 def open_lock(filename):
     fd = os.open(filename, os.O_RDWR | os.O_CLOEXEC)
 
@@ -31,11 +32,13 @@ def open_lock(filename):
 
     return fd
 
+
 def open_write(filename):
     fd = os.open(filename, os.O_CREAT | os.O_WRONLY | os.O_NONBLOCK |
-            os.O_CLOEXEC, 0o600);
+                 os.O_CLOEXEC, 0o600)
 
     return fd
+
 
 def save_sync(filename, data: bytes):
     fd = open_write(filename)
