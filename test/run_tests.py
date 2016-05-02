@@ -57,7 +57,7 @@ suite.addTests([
 logging.basicConfig(level=logging.CRITICAL)
 
 # Activate Logs
-#logging.basicConfig(level=logging.INFO)
+# logging.basicConfig(level=logging.INFO)
 
 # run all tests
 unittest.TextTestRunner(verbosity=3).run(suite)
