@@ -144,8 +144,9 @@ class Connection:
                 data = self._socket.recv(self._buffer_size)
 
                 if data == b'':
+                    self._disconnected.set()
                     break
-            finally:
+            except:
                 if not self._disconnected.is_set():
                     logging.warning("Connection was closed by server!")
                     self._disconnected.set()
