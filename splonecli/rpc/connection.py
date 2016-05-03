@@ -55,15 +55,10 @@ class Connection:
         :raises: socket.gaierror if Host unknown
         :raises: :ConnectionError if hostname or port are invalid types
         """
-        if not isinstance(hostname, str):
-            raise ConnectionError("Hostname has to be string")
 
         self._ip = socket.gethostbyname(hostname)
-
-        if not isinstance(port, int) or port <= 0 or port > 65535:
-            raise ConnectionError("Port has to be an unsigned 16bit integer")
-
         self._port = port
+
         logging.debug("Connecting to host: " + hostname + ":" + port.__str__())
         self._socket.connect((self._ip, self._port))
         logging.debug("Connected to: " + self._ip + ":" + port.__str__())

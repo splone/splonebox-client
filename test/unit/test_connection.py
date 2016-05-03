@@ -33,12 +33,6 @@ class ConnectionTest(unittest.TestCase):
         with self.assertRaises(ConnectionRefusedError):
             self.con.connect("127.0.0.1", 6666, None, listen=False)
 
-        with self.assertRaises(ConnectionError):
-            self.con.connect(1, 1234, None, listen=False)
-
-        with self.assertRaises(ConnectionError):
-            self.con.connect("127.0.0.1", "bla", None, listen=False)
-
     def test_020_send_message(self):
         """ Verify that the box returned by crypto_write is sent. """
         self.con.crypto_context.crypto_established.set()
