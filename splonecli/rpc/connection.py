@@ -148,7 +148,7 @@ class Connection:
             finally:
                 if not self._disconnected.is_set():
                     logging.warning("Connection was closed by server!")
-                    self._disconnected.clear()
+                    self._disconnected.set()
 
             recv_buffer += data
 
