@@ -32,8 +32,8 @@ class Connection:
         self._port = None
         self._listen_thread = None
         self._socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        self._connected = threading.Event()
-        self.is_listening = threading.Lock()
+        self._disconnected = threading.Event()
+        self._disconnected.set()
         self.crypto_context = Crypto.by_path()
 
     def connect(self,
@@ -67,8 +67,7 @@ class Connection:
         self._init_crypto()
         logging.debug("Encryption initialized!")
 
-        self._connected.set()
-
+        self._disconnected.clear()
         if listen:
             self.listen(msg_callback, new_thread=listen_on_new_thread)
 
@@ -76,7 +75,6 @@ class Connection:
         """
         Executes the crypto handshake w/ server. Raises errors in
         case of failure.
-
         """
 
         try:
@@ -117,7 +115,7 @@ class Connection:
 
     def disconnect(self):
         """Closes the connection"""
-        self._connected.clear()
+        self._disconnected.set()
         self._socket.shutdown(socket.SHUT_RDWR)
         self._socket.close()
         self._listen_thread.join()
@@ -127,7 +125,7 @@ class Connection:
 
         :param msg: Message to be sent
         """
-        if not self._connected.is_set():
+        if self._disconnected.is_set():
             raise BrokenPipeError("Connection has been closed")
 
         self.crypto_context.crypto_established.wait()
@@ -138,27 +136,19 @@ class Connection:
     def _listen(self, msg_callback):
         """Listens for incoming messages.
         :param msg_callback callback function with one argument (:Message)
-        :raises: ConnectionError if connection is unexpectedly terminated
         """
         recv_buffer = b''
-        self.is_listening.acquire(True)
 
-        while self._connected.is_set():
+        while not self._disconnected.is_set():
             try:
                 data = self._socket.recv(self._buffer_size)
 
                 if data == b'':
                     break
-
-            except (BrokenPipeError, OSError, ConnectionResetError):
-                self.is_listening.release()
-
-                if self._connected.is_set():
+            finally:
+                if not self._disconnected.is_set():
                     logging.warning("Connection was closed by server!")
-                    self._connected.clear()
-                    raise  # only raise on unintentional disconnect
-
-                return
+                    self._disconnected.clear()
 
             recv_buffer += data
 
@@ -174,6 +164,3 @@ class Connection:
 
             except InvalidPacketException as e:
                 logging.warning(e)
-
-        self._connected.clear()
-        self.is_listening.release()

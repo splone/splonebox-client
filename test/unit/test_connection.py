@@ -51,7 +51,7 @@ class ConnectionTest(unittest.TestCase):
 
         """
         con = self.con
-        con._connected.set()
+        con._disconnected.clear()
         buf = mocks.connection_socket_fake_recv(con)
 
         data = bytearray(10)
@@ -74,7 +74,7 @@ class ConnectionTest(unittest.TestCase):
         thread = Thread(target=con._listen, args=(callback, ))
         thread.daemon = True
         thread.start()
-        con._connected.clear()
+        con._disconnected.set()
 
         # verify that callback is called
         callback.assert_called_with(data)
@@ -88,7 +88,7 @@ class ConnectionTest(unittest.TestCase):
     def test_040_listen_two_one_packets(self):
         """ Two crypto messages within one network packet. """
         con = self.con
-        con._connected.set()
+        con._disconnected.clear()
         buf = mocks.connection_socket_fake_recv(con)
 
         data = b'data1data2'
@@ -115,7 +115,7 @@ class ConnectionTest(unittest.TestCase):
         thread = Thread(target=con._listen, args=(callback, ))
         thread.daemon = False
         thread.start()
-        con._connected.clear()
+        con._disconnected.set()
 
         thread.join()
 
@@ -131,7 +131,7 @@ class ConnectionTest(unittest.TestCase):
     def test_050_listen_one_two_packets(self):
         """ One crypto message within two network packets. """
         con = self.con
-        con._connected.set()
+        con._disconnected.clear()
         buf = mocks.connection_socket_fake_recv(con)
 
         data = b'foooobaaar'
@@ -159,7 +159,7 @@ class ConnectionTest(unittest.TestCase):
         thread = Thread(target=con._listen, args=(callback, ))
         thread.daemon = False
         thread.start()
-        con._connected.clear()
+        con._disconnected.set()
 
         thread.join()
 
