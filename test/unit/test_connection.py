@@ -171,3 +171,40 @@ class ConnectionTest(unittest.TestCase):
 
         # verify that callback is called
         callback.assert_has_calls([mock.call(data)])
+
+    def test_060_listen_failures(self):
+        """ Test error handling during listen """
+        con = self.con
+        con._disconnected.clear()
+        callback = mock.Mock()
+
+        con.crypto_context.crypto_verify_length = mock.Mock()
+
+        # test recv returning b''
+        con._listen(callback)
+        self.assertTrue(con._disconnected.is_set())
+
+        con.crypto_context.crypto_verify_length.assert_not_called()
+
+        # test exception raised without prior disconnect
+        recv = mock.Mock()
+        recv.side_effect = IOError()
+        con._socket.recv = recv
+        con._disconnected.clear()
+
+        with self.assertRaises(IOError):
+            con._listen(callback)
+        self.assertTrue(con._disconnected.is_set())
+
+        con.crypto_context.crypto_verify_length.assert_not_called()
+
+        # test exception raised with prior disconnect
+        con._socket.recv = mock.Mock()
+        con._socket.recv.side_effect = IOError()
+
+        con._disconnected.is_set = mock.Mock()
+        con._disconnected.is_set.side_effect = [False, True]
+
+        con._listen(callback)
+
+        con.crypto_context.crypto_verify_length.assert_not_called()
