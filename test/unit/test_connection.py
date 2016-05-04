@@ -44,6 +44,11 @@ class ConnectionTest(unittest.TestCase):
             self.con.send_message(data)
             self.con._socket.sendall.assert_called_with(data)
 
+        # test send while disconnected
+        self.con._disconnected.set()
+        with self.assertRaises(BrokenPipeError):
+            self.con.send_message(b'foo')
+
     def test_030_listen_one_packet(self):
         """
         Verify segmentation handling by method '_listing' with one
