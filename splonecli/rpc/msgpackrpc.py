@@ -56,9 +56,10 @@ class MsgpackRpc:
         :return: None
         """
 
-        logging.info("sending: \n" + msg.__str__())
-        if msg is None:
+        if not isinstance(msg, Message):
             raise InvalidMessageError("Unable to send None!")
+
+        logging.info("sending: \n" + msg.__str__())
         self._connection.send_message(msg.pack())
 
         if response_callback is not None:
@@ -79,7 +80,6 @@ class MsgpackRpc:
                 m = MResponse(0)
                 m.error = [400, "Invalid Message Format"]
                 self.send(m)
-                pass
 
         for msg in messages:
             try:
@@ -106,6 +106,8 @@ class MsgpackRpc:
 
                 m = MResponse(msg.get_msgid())
                 m.error = [418, "Unexpected exception occurred!"]
+                self.send(m)
+
 
     def register_function(self, foo, name: str):
         """Register a function at msgpack rpc dispatcher
@@ -141,7 +143,6 @@ class MsgpackRpc:
                     "The msgid in given response does not match any request!\n")
 
             raise
-        pass
 
     def _handle_notify(self, msg: MNotify):
         """Notfication messages are not used yet

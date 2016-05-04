@@ -18,11 +18,13 @@ see <http://www.gnu.org/licenses/>.
 """
 
 import unittest
+import msgpack
 from unittest.mock import Mock
 from splonecli.rpc.message import MRequest, InvalidMessageError, MNotify, \
  MResponse
 from splonecli.rpc.msgpackrpc import MsgpackRpc
 from test import mocks
+
 
 
 class MsgpackRpcTest(unittest.TestCase):
@@ -52,6 +54,9 @@ class MsgpackRpcTest(unittest.TestCase):
         con_send_mock.side_effect = BrokenPipeError()
         with self.assertRaises(BrokenPipeError):
             rpc.send(m1)
+
+        with self.assertRaises(InvalidMessageError):
+            rpc.send(123)
 
     # noinspection PyProtectedMember
     def test_message_callback(self):
@@ -95,6 +100,16 @@ class MsgpackRpcTest(unittest.TestCase):
         self.assertEqual(mock_send.call_args[0][0].error[1],
                          "Could not handle request! req")
 
+        rpc._message_callback(msgpack.packb(["hi"]))
+        self.assertEqual(mock_send.call_args[0][0].error[1],
+                         "Invalid Message Format")
+
+        # handle unexpected exception
+        handle_notify.side_effect = TypeError()
+        rpc._message_callback(m_not.pack())
+        self.assertEqual(mock_send.call_args[0][0].error[1],
+                         "Unexpected exception occurred!")
+
     def test_handle_response(self):
         rpc = MsgpackRpc()
         response = MResponse(1234)
@@ -102,9 +117,17 @@ class MsgpackRpcTest(unittest.TestCase):
         mock_callback = Mock()
 
         rpc._response_callbacks[1234] = mock_callback
+        rpc._response_callbacks[1234] = mock_callback
 
         rpc._handle_response(response)
         mock_callback.assert_called_with(response)
 
+        # unrelated response
+        with self.assertRaises(KeyError):
+            rpc._handle_response(response)
+
+        # unrelated error response
+        response.response = None
+        response.error = [404, "Unrelated"]
         with self.assertRaises(KeyError):
             rpc._handle_response(response)
