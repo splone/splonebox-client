@@ -118,7 +118,8 @@ class Connection:
         self._disconnected.set()
         self._socket.shutdown(socket.SHUT_RDWR)
         self._socket.close()
-        self._listen_thread.join()
+        if self._listen_thread is not None:
+            self._listen_thread.join()
 
     def send_message(self, msg: bytes):
         """Sends given message to server if connected
