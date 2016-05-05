@@ -103,7 +103,7 @@ class Connection:
 
         :param new_thread: Should we listen in a new thread?
         :param msg_callback: This function gets called on incoming messages.
-        It has one argument of type Message
+        It has one argument of type bytes
         """
         if new_thread:
             self._listen_thread = threading.Thread(target=self._listen,
