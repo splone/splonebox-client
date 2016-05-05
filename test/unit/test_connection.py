@@ -6,7 +6,7 @@ import socket
 from test import mocks
 from splonecli.rpc.connection import Connection
 from splonecli.rpc.crypto import InvalidPacketException, \
-    PackageTooShortException
+    PacketTooShortException
 
 
 class ConnectionTest(unittest.TestCase):
@@ -178,7 +178,7 @@ class ConnectionTest(unittest.TestCase):
 
         # mock length
         crypto_verify = mock.Mock()
-        crypto_verify.side_effect = [PackageTooShortException(), len(data)]
+        crypto_verify.side_effect = [PacketTooShortException(), len(data)]
         con.crypto_context.crypto_verify_length = crypto_verify
 
         # mock crypto_read function to return full data in two packets

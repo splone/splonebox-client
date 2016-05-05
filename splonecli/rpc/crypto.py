@@ -38,7 +38,7 @@ class InvalidPacketException(Exception):
     pass
 
 
-class PackageTooShortException(InvalidPacketException):
+class PacketTooShortException(InvalidPacketException):
     pass
 
 
@@ -173,7 +173,7 @@ class Crypto:
 
         """
         if not len(data) >= 40:
-            raise PackageTooShortException("Message to short")
+            raise PacketTooShortException("Message to short")
 
         identifier, = struct.unpack("<8s", data[:8])
 

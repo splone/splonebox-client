@@ -23,7 +23,7 @@ import socket
 
 from splonecli.rpc.crypto import Crypto
 from splonecli.rpc.crypto import InvalidPacketException, \
-    PackageTooShortException
+    PacketTooShortException
 
 
 class Connection:
