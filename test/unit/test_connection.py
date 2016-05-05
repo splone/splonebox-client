@@ -12,10 +12,9 @@ from splonecli.rpc.crypto import InvalidPacketException, \
 
 class ConnectionTest(unittest.TestCase):
 
-    @classmethod
-    def setUpClass(cls):
-        cls.con = Connection()
-        cls.con._socket = mock.Mock(spec=socket.socket)
+    def setUp(self):
+        self.con = Connection()
+        self.con._socket = mock.Mock(spec=socket.socket)
 
     def test_010_connect(self):
         self.con._init_crypto = mock.Mock()
@@ -38,6 +37,7 @@ class ConnectionTest(unittest.TestCase):
     def test_020_send_message(self):
         """ Verify that the box returned by crypto_write is sent. """
         self.con.crypto_context.crypto_established.set()
+        self.con._disconnected.clear()
 
         for data in [b"foobar", libnacl.randombytes(10), b""]:
             self.con.crypto_context.crypto_write = mock.Mock(
@@ -211,6 +211,7 @@ class ConnectionTest(unittest.TestCase):
         con.crypto_context.crypto_verify_length = mock.Mock()
 
         # test recv returning b''
+        mocks.connection_socket_fake_recv(con)
         con._listen(callback)
         self.assertTrue(con._disconnected.is_set())
 
@@ -239,9 +240,6 @@ class ConnectionTest(unittest.TestCase):
         con._listen(callback)
 
         con.crypto_context.crypto_verify_length.assert_not_called()
-
-        # clean up _disconnected mock
-        con._disconnected = Event()
 
     def test_070_liste_invalid_packet(self):
         """ Test that after receiving an invalid package,
