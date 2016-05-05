@@ -1,5 +1,4 @@
 from unittest import mock
-from threading import Thread, Event
 import unittest
 import libnacl
 import socket
