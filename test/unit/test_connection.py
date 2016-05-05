@@ -281,3 +281,20 @@ class ConnectionTest(unittest.TestCase):
         # verify that callback was called only once with valid data
         callback.assert_called_once_with(data)
         # put data on to mocked socket
+
+    def test_080_listen_wrapper(self):
+        con = self.con
+        callback = mock.Mock()
+        con._listen = mock.Mock()
+
+        # test listen without new thread
+        con.listen(callback, False)
+        con._listen.assert_called_once_with(callback)
+        self.assertTrue(con._listen_thread is None)
+
+        con._listen.reset_mock()
+
+        # test listen with new thread
+        con.listen(callback, True)
+        con._listen.assert_called_once_with(callback)
+        self.assertTrue(con._listen_thread is not None)
