@@ -1,11 +1,13 @@
 from unittest import mock
-from threading import Thread
+from threading import Thread, Event
 import unittest
 import libnacl
 import socket
 
-from splonecli.rpc.connection import Connection
 from test import mocks
+from splonecli.rpc.connection import Connection
+from splonecli.rpc.crypto import InvalidPacketException, \
+    PackageTooShortException
 
 
 class ConnectionTest(unittest.TestCase):
@@ -177,6 +179,42 @@ class ConnectionTest(unittest.TestCase):
         # verify that callback is called
         callback.assert_has_calls([mock.call(data)])
 
+    def test_051_listen_one_two_packets(self):
+        """ verify correct handling of PackageTooShortException"""
+        con = self.con
+        con._disconnected.clear()
+        buf = mocks.connection_socket_fake_recv(con)
+
+        data = libnacl.randombytes(64)
+
+        # the callback function called after decrypting packet
+        callback = mock.Mock()
+
+        # mock length
+        crypto_verify = mock.Mock()
+        crypto_verify.side_effect = [PackageTooShortException(), len(data)]
+        con.crypto_context.crypto_verify_length = crypto_verify
+
+        # mock crypto_read function to return full data in two packets
+        crypto_read = mock.Mock()
+        crypto_read.side_effect = [data]
+        con.crypto_context.crypto_read = crypto_read
+
+        # put data on to mocked socket (socket will return b'' afterwards)
+        buf.append(data[:10])
+        buf.append(data[10:])
+
+        con._listen(callback)
+
+        # verify that crypto_verify is called with incomming packet
+        crypto_verify.assert_has_calls([mock.call(data[:10]), mock.call(data)])
+
+        # verify that crypto_read is called with incoming data
+        crypto_read.assert_has_calls([mock.call(data)])
+
+        # verify that callback is called
+        callback.assert_has_calls([mock.call(data)])
+
     def test_060_listen_failures(self):
         """ Test error handling during listen """
         con = self.con
@@ -213,3 +251,47 @@ class ConnectionTest(unittest.TestCase):
         con._listen(callback)
 
         con.crypto_context.crypto_verify_length.assert_not_called()
+
+        # clean up _disconnected mock
+        con._disconnected = Event()
+
+    def test_070_liste_invalid_packet(self):
+        """ Test that after receiving an invalid package,
+        it get's dropped and the next is handled correctly
+        """
+        con = self.con
+        con._disconnected.clear()
+        buf = mocks.connection_socket_fake_recv(con)
+
+        data = bytearray(10)
+
+        # the callback function called after decrypting packet
+        callback = mock.Mock()
+
+        # mock length, first throw an exception and then the actual length
+        crypto_verify = mock.Mock()
+        crypto_verify.side_effect = [InvalidPacketException(), len(data)]
+        con.crypto_context.crypto_verify_length = crypto_verify
+
+        # mock crypto_read function to return full data at once
+        crypto_read = mock.Mock()
+        crypto_read.side_effect = [data]
+        con.crypto_context.crypto_read = crypto_read
+
+        # put data on to mocked socket
+        # first data is invalid
+        # (socket will return b'' afterwards)
+        buf.append(libnacl.randombytes(50))
+        buf.append(data)
+
+        con._listen(callback)
+
+        # verify that crypto_verify is called with incomming packet
+        crypto_verify.assert_has_calls([mock.call(data)])
+
+        # verify that crypto_read is called once with valid data
+        crypto_read.assert_called_once_with(data)
+
+        # verify that callback was called only once with valid data
+        callback.assert_called_once_with(data)
+        # put data on to mocked socket
