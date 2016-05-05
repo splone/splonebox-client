@@ -22,7 +22,8 @@ import logging
 import socket
 
 from splonecli.rpc.crypto import Crypto
-from splonecli.rpc.crypto import InvalidPacketException
+from splonecli.rpc.crypto import InvalidPacketException, \
+    PackageTooShortException
 
 
 class Connection:
@@ -146,11 +147,11 @@ class Connection:
 
                 if data == b'':
                     self._disconnected.set()
+                    logging.warning("Connection was closed by the server!")
                     break
             except:
                 if not self._disconnected.is_set():
                     self._disconnected.set()
-                    logging.warning("Connection was closed by server!")
                     raise
                 return
 
@@ -167,4 +168,8 @@ class Connection:
                     recv_buffer = recv_buffer[msg_length:]
 
             except InvalidPacketException as e:
-                logging.warning(e)
+                if isinstance(e, PackageTooShortException):
+                    continue
+                else:
+                    logging.warning(e)
+                    recv_buffer = b''

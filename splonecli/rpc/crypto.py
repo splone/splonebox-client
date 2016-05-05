@@ -38,6 +38,10 @@ class InvalidPacketException(Exception):
     pass
 
 
+class PackageTooShortException(InvalidPacketException):
+    pass
+
+
 def load_key(path: str) -> bytes:
     """Load a key from a file
     :raises :TypeError if path is not a string
@@ -169,7 +173,7 @@ class Crypto:
 
         """
         if not len(data) >= 40:
-            raise InvalidPacketException("Message to short")
+            raise PackageTooShortException("Message to short")
 
         identifier, = struct.unpack("<8s", data[:8])
 
