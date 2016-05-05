@@ -53,8 +53,8 @@ class ConnectionTest(unittest.TestCase):
 
     def test_030_listen_one_packet(self):
         """
-        Verify segmentation handling by method '_listing' with one
-        packets.
+        Verify segmentation handling by method '_listen' with one
+        packet.
 
         """
         con = self.con
@@ -75,13 +75,10 @@ class ConnectionTest(unittest.TestCase):
         crypto_read.side_effect = [data]
         con.crypto_context.crypto_read = crypto_read
 
-        # put data on to mocked socket
+        # put data on to mocked socket(socket will return b'' afterwards)
         buf.append(data)
 
-        thread = Thread(target=con._listen, args=(callback, ))
-        thread.daemon = True
-        thread.start()
-        con._disconnected.set()
+        con._listen(callback)
 
         # verify that callback is called
         callback.assert_called_with(data)
@@ -116,15 +113,10 @@ class ConnectionTest(unittest.TestCase):
         crypto_read.side_effect = [first, snd]
         con.crypto_context.crypto_read = crypto_read
 
-        # put data on to mocked socket
+        # put data on to mocked socket(socket will return b'' afterwards)
         buf.append(data)
 
-        thread = Thread(target=con._listen, args=(callback, ))
-        thread.daemon = False
-        thread.start()
-        con._disconnected.set()
-
-        thread.join()
+        con._listen(callback)
 
         # verify that crypto_verify is called with incomming packet
         crypto_verify.assert_has_calls([mock.call(data)])
@@ -141,8 +133,8 @@ class ConnectionTest(unittest.TestCase):
         con._disconnected.clear()
         buf = mocks.connection_socket_fake_recv(con)
 
-        data = b'foooobaaar'
-        middle = int(len(data) / 2)
+        data = libnacl.randombytes(64)
+        middle = int(len(data)/2)
         first = data[:middle]  # first packet
         snd = data[middle:]    # second packet
 
@@ -159,16 +151,11 @@ class ConnectionTest(unittest.TestCase):
         crypto_read.side_effect = [data]
         con.crypto_context.crypto_read = crypto_read
 
-        # put data on to mocked socket
+        # put data on to mocked socket(socket will return b'' afterwards)
         buf.append(first)
         buf.append(snd)
 
-        thread = Thread(target=con._listen, args=(callback, ))
-        thread.daemon = False
-        thread.start()
-        con._disconnected.set()
-
-        thread.join()
+        con._listen(callback)
 
         # verify that crypto_verify is called with incomming packet
         crypto_verify.assert_has_calls([mock.call(first), mock.call(data)])
@@ -237,6 +224,7 @@ class ConnectionTest(unittest.TestCase):
 
         with self.assertRaises(IOError):
             con._listen(callback)
+
         self.assertTrue(con._disconnected.is_set())
 
         con.crypto_context.crypto_verify_length.assert_not_called()
