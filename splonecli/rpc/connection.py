@@ -166,10 +166,8 @@ class Connection:
                     msg_callback(plain)
 
                     recv_buffer = recv_buffer[msg_length:]
-
+            except PacketTooShortException:
+                continue
             except InvalidPacketException as e:
-                if isinstance(e, PackageTooShortException):
-                    continue
-                else:
-                    logging.warning(e)
-                    recv_buffer = b''
+                logging.warning(e)
+                recv_buffer = b''
