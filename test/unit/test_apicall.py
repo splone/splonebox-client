@@ -24,6 +24,7 @@ import unittest
 from splonebox.api.apicall import InvalidApiCallError, ApiRun, ApiRegister
 from splonebox.rpc.message import MRequest, InvalidMessageError
 
+
 class ApiCallTest(unittest.TestCase):
     def test_from_msgpack_request(self):
         msg = MRequest()

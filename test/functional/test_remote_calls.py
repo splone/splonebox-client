@@ -21,7 +21,6 @@ import ctypes
 import socket
 import unittest
 import msgpack
-import libnacl
 from unittest.mock import Mock
 
 from splonebox.api.plugin import Plugin
