@@ -26,7 +26,6 @@ from splonecli.rpc.msgpackrpc import MsgpackRpc
 from test import mocks
 
 
-
 class MsgpackRpcTest(unittest.TestCase):
     def test_send(self):
         rpc = MsgpackRpc()
@@ -56,7 +55,7 @@ class MsgpackRpcTest(unittest.TestCase):
             rpc.send(m1)
 
         with self.assertRaises(InvalidMessageError):
-            rpc.send(123)
+            rpc.send(None)
 
     # noinspection PyProtectedMember
     def test_message_callback(self):
@@ -91,6 +90,11 @@ class MsgpackRpcTest(unittest.TestCase):
         rpc._message_callback(m_not.pack())
         self.assertEqual(mock_send.call_args[0][0].error[1],
                          "Could not handle request! not")
+
+        handle_notify.side_effect = TypeError()
+        rpc._message_callback(m_not.pack())
+        self.assertEqual(mock_send.call_args[0][0].error[1],
+                         "Unexpected exception occurred!")
 
         rpc._message_callback(m_res.pack())
         self.assertEqual(mock_send.call_args[0][0].error[1],

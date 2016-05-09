@@ -28,7 +28,7 @@ class Message:
     https://github.com/msgpack-rpc/msgpack-rpc/blob/master/spec.md
     """
 
-    _max_message_id = pow(2, 32)
+    _max_message_id = pow(2, 32)-1
 
     def __init__(self):
         self._type = None

@@ -33,7 +33,6 @@ class MsgpackRpc:
         self._dispatcher = {}
         self._response_callbacks = {}
         self._unpacker = msgpack.Unpacker()
-        pass
 
     def connect(self, host: str, port: int):
         """Connect to given host
@@ -107,7 +106,6 @@ class MsgpackRpc:
                 m = MResponse(msg.get_msgid())
                 m.error = [418, "Unexpected exception occurred!"]
                 self.send(m)
-
 
     def register_function(self, foo, name: str):
         """Register a function at msgpack rpc dispatcher
