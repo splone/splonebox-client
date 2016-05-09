@@ -57,12 +57,12 @@ class RemoteCallTest(unittest.TestCase):
         plug = Plugin("abc", "foo", "bar", "bob", "alice")
         mock_send = mocks.rpc_connection_send(plug._rpc)
 
-        plug.run("plugin_id", "function", [1, "hi", 42.317, b'hi'])
+        plug.run("api_key", "function", [1, "hi", 42.317, b'hi'])
         outgoing = msgpack.unpackb(mock_send.call_args[0][0])
 
         self.assertEqual(0, outgoing[0])
         self.assertEqual(b'run', outgoing[2])
-        self.assertEqual([b'plugin_id', None], outgoing[3][0])
+        self.assertEqual([b'api_key', None], outgoing[3][0])
         self.assertEqual(b"function", outgoing[3][1])
         self.assertEqual([1, b'hi', 42.317, b'hi'], outgoing[3][2])
 

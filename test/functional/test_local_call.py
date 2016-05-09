@@ -45,7 +45,7 @@ class LocalCall(unittest.TestCase):
 
         # pretend that we received a message
         call = ApiRun("id", "foo", [True, b'hi', 5, -82, 7.23, "hi", 64])
-        call.msg.arguments[0][0] = None  # remove plugin_id
+        call.msg.arguments[0][0] = None  # remove api_key
         call.msg.arguments[0][1] = 123  # set some call id
         plug._rpc._message_callback(call.msg.pack())
 

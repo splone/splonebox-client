@@ -30,14 +30,14 @@ from splonebox.api.result import RunResult, Result, RegisterResult
 
 class Plugin:
     def __init__(self,
-                 plugin_id: str,
+                 api_key: str,
                  name: str,
                  desc: str,
                  author: str,
                  licence: str,
                  debug=False):
         """
-        :param plugin_id: api key (make sure it was added to the core)
+        :param api_key: api key (make sure it was added to the core)
         :param name: Name of the plugin
         :param desc: Description of the plugin
         :param author: Author of the plugin
@@ -48,8 +48,8 @@ class Plugin:
         :param serverlongtermpk_path: path to file containing the
         server's longterm key
         """
-        # [<plugin_id>, <name>, <description>, <author>, <license>]
-        self._metadata = [plugin_id, name, desc, author, licence]
+        # [<api_key>, <name>, <description>, <author>, <license>]
+        self._metadata = [api_key, name, desc, author, licence]
 
         self._rpc = MsgpackRpc()
         # register run function @ rpc dispatcher
@@ -127,17 +127,17 @@ class Plugin:
                 result.set_id(response.response[0])
                 self._results_pending[result.get_id()] = result
 
-    def run(self, plugin_id: str, function: str, arguments: []):
+    def run(self, api_key: str, function: str, arguments: []):
         """Run a remote function and return a :Result
 
         :param has_result: Does the called function have a result?
-        :param plugin_id: Targets plugin_id
+        :param api_key: Targets api_key
         :param function: name of the function
         :param arguments: function arguments | empty list or None for no args
         :return: :RunResult
         :raises :RemoteRunError if run call failed
         """
-        run_call = ApiRun(plugin_id, function, arguments)
+        run_call = ApiRun(api_key, function, arguments)
         self._rpc.send(run_call.msg, self._handle_response)
 
         result = RunResult()

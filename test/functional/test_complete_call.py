@@ -44,7 +44,7 @@ class CompleteCall(unittest.TestCase):
         # receive request
         msg = MRequest.from_unpacked(msgpack.unpackb(mock_send.call_args[0][
             0]))
-        msg.arguments[0][0] = None  # remove plugin_id
+        msg.arguments[0][0] = None  # remove api_key
         msg.arguments[0][1] = 123  # set call id
         plug._rpc._message_callback(msg.pack())
 
