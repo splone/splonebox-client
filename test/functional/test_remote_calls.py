@@ -20,18 +20,13 @@ see <http://www.gnu.org/licenses/>.
 import ctypes
 import socket
 import unittest
-from unittest.mock import Mock
 import msgpack
+import libnacl
+from unittest.mock import Mock
 
 from splonecli.api.plugin import Plugin
 from splonecli.api.remotefunction import RemoteFunction
 from test import mocks
-
-
-def collect_tests(suite: unittest.TestSuite):
-    suite.addTest(RemoteCallTest("test_register_functional"))
-    suite.addTest(RemoteCallTest("test_run_functional"))
-    suite.addTest(RemoteCallTest("test_connect_functional"))
 
 
 class RemoteCallTest(unittest.TestCase):
@@ -42,7 +37,7 @@ class RemoteCallTest(unittest.TestCase):
             pass
 
         RemoteFunction(fun2)
-        plug = Plugin("abc", "foo", "bar", "bob", "alice", debug=False)
+        plug = Plugin("abc", "foo", "bar", "bob", "alice")
         mock_send = mocks.rpc_connection_send(plug._rpc)
 
         plug.register(blocking=False)
@@ -59,7 +54,7 @@ class RemoteCallTest(unittest.TestCase):
         RemoteFunction.remote_functions = {}
 
     def test_run_functional(self):
-        plug = Plugin("abc", "foo", "bar", "bob", "alice", debug=False)
+        plug = Plugin("abc", "foo", "bar", "bob", "alice")
         mock_send = mocks.rpc_connection_send(plug._rpc)
 
         plug.run("plugin_id", "function", [1, "hi", 42.317, b'hi'])
@@ -71,12 +66,12 @@ class RemoteCallTest(unittest.TestCase):
         self.assertEqual(b"function", outgoing[3][1])
         self.assertEqual([1, b'hi', 42.317, b'hi'], outgoing[3][2])
 
-    pass
-
     def test_connect_functional(self):
-        plug = Plugin("abc", "foo", "bar", "bob", "alice", debug=False)
+        plug = Plugin("abc", "foo", "bar", "bob", "alice")
+
         mock_sock = mocks.connection_socket(plug._rpc._connection)
         plug._rpc._connection.listen = Mock()
+        plug._rpc._connection._init_crypto = Mock()
 
         plug.connect("localhost", 1234)
         ip = mock_sock.connect.call_args[0][0][0]
@@ -84,5 +79,3 @@ class RemoteCallTest(unittest.TestCase):
 
         self.assertEqual(ip, socket.gethostbyname("localhost"))
         self.assertEqual(port, 1234)
-
-    pass

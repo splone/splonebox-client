@@ -24,14 +24,6 @@ import unittest
 from splonecli.api.apicall import InvalidApiCallError, ApiRun, ApiRegister
 from splonecli.rpc.message import MRequest, InvalidMessageError
 
-
-def collect_tests(suite: unittest.TestSuite):
-    suite.addTest(ApiCallTest("test_apiregister"))
-    suite.addTest(ApiCallTest("test_apirun"))
-    suite.addTest(ApiCallTest("test_from_msgpack_request"))
-    pass
-
-
 class ApiCallTest(unittest.TestCase):
     def test_from_msgpack_request(self):
         msg = MRequest()

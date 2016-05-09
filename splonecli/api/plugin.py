@@ -43,6 +43,10 @@ class Plugin:
         :param author: Author of the plugin
         :param licence: License of the plugin
         :param debug: If true more information will be printed to the output
+        :param serverlongtermpk: The server's longterm key
+        (if set, path is ignored!)
+        :param serverlongtermpk_path: path to file containing the
+        server's longterm key
         """
         # [<plugin_id>, <name>, <description>, <author>, <license>]
         self._metadata = [plugin_id, name, desc, author, licence]

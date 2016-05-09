@@ -22,12 +22,6 @@ import unittest
 from splonecli.api.result import Result, RegisterResult, RemoteError, RunResult
 
 
-def collect_tests(suite: unittest.TestSuite):
-    suite.addTest(ResultTest('test_result'))
-    suite.addTest(ResultTest('test_register_result'))
-    suite.addTest(ResultTest('test_run_result'))
-
-
 class ResultTest(unittest.TestCase):
     def test_result(self):
         res = Result()

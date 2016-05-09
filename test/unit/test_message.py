@@ -24,14 +24,6 @@ import msgpack
 from splonecli.rpc.message import MRequest, Message, MResponse, MNotify, \
  InvalidMessageError
 
-
-def collect_tests(suite: unittest.TestSuite):
-    suite.addTest(MessageTest('test_MRequest'))
-    suite.addTest(MessageTest('test_MResponse'))
-    suite.addTest(MessageTest('test_MNotify'))
-    suite.addTest(MessageTest('test_unpack'))
-
-
 class MessageTest(unittest.TestCase):
     def test_unpack(self):
         msg_request = [0, 1, b'run', [b'hi']]

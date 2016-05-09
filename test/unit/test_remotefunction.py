@@ -24,12 +24,6 @@ from unittest.mock import Mock
 from splonecli.api.remotefunction import RemoteFunction
 
 
-def collect_tests(suite: unittest.TestSuite):
-    suite.addTest(RemoteFunctionTest("test_annotation"))
-    suite.addTest(RemoteFunctionTest("test_call"))
-    pass
-
-
 @RemoteFunction
 def fun1():
     pass

@@ -21,36 +21,45 @@ see <http://www.gnu.org/licenses/>.
 import logging
 import unittest
 
-from test.functional import test_remote_calls, test_local_call, \
- test_complete_call
-from test.unit import test_connection, test_message, \
- test_msgpackrpc, test_plugin, test_remotefunction, test_result, \
- test_apicall
+from test.unit import test_apicall
+from test.unit import test_remotefunction
+from test.unit import test_plugin
+from test.unit import test_result
+from test.unit import test_message
+from test.unit import test_msgpackrpc
+from test.unit import test_connection
+from test.unit import test_crypto
+
+from test.functional import test_remote_calls
+from test.functional import test_local_call
+from test.functional import test_complete_call
+from test.functional import test_crypto_init
 
 # create test suite
 suite = unittest.TestSuite()
+loader = unittest.defaultTestLoader
 
-# collect all tests
+suite.addTests([
+    loader.loadTestsFromModule(test_apicall),
+    loader.loadTestsFromModule(test_remotefunction),
+    loader.loadTestsFromModule(test_plugin),
+    loader.loadTestsFromModule(test_result),
+    loader.loadTestsFromModule(test_message),
+    loader.loadTestsFromModule(test_msgpackrpc),
+    loader.loadTestsFromModule(test_connection),
+    loader.loadTestsFromModule(test_crypto),
+    loader.loadTestsFromModule(test_remote_calls),
+    loader.loadTestsFromModule(test_local_call),
+    loader.loadTestsFromModule(test_complete_call),
+    loader.loadTestsFromModule(test_crypto_init)
+])
 
-# api
-test_apicall.collect_tests(suite)
-test_remotefunction.collect_tests(suite)
-test_plugin.collect_tests(suite)
-test_result.collect_tests(suite)
-# rpc
-test_message.collect_tests(suite)
-test_msgpackrpc.collect_tests(suite)
-test_connection.collect_tests(suite)
 # functional
-test_remote_calls.collect_tests(suite)
-test_local_call.collect_tests(suite)
-test_complete_call.collect_tests(suite)
-
 # Deactivate warnings and Logs
-logging.basicConfig(level=logging.ERROR)
+logging.basicConfig(level=logging.CRITICAL)
 
 # Activate Logs
-#logging.basicConfig(level=logging.INFO)
+# logging.basicConfig(level=logging.INFO)
 
 # run all tests
 unittest.TextTestRunner(verbosity=3).run(suite)

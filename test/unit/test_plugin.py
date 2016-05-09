@@ -26,17 +26,9 @@ from splonecli.rpc.message import MResponse, MRequest
 from splonecli.api.remotefunction import RemoteFunction
 
 
-def collect_tests(suite: unittest.TestSuite):
-    suite.addTest(PluginTest('test_register'))
-    suite.addTest(PluginTest('test_connect'))
-    suite.addTest(PluginTest('test_run'))
-    suite.addTest(PluginTest('test_handle_response'))
-    suite.addTest(PluginTest('test_handle_run'))
-
-
 class PluginTest(unittest.TestCase):
     def test_register(self):
-        plug = Plugin("abc", "foo", "bar", "bob", "alice", debug=False)
+        plug = Plugin("abc", "foo", "bar", "bob", "alice")
 
         rpc_send_mock = mocks.plug_rpc_send(plug)
         plug.register(blocking=False)
@@ -60,8 +52,7 @@ class PluginTest(unittest.TestCase):
 
         plug.connect("hostname", 1234)
         connect_rpc_mock.assert_called_with("hostname", 1234)
-
-    # Note: connect is just a wrapper for Connection.connect()
+        # Note: connect is just a wrapper for Connection.connect()
 
     def test_run(self):
         plug = Plugin("abc", "foo", "bar", "bob", "alice")

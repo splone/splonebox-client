@@ -29,6 +29,7 @@ from splonecli.rpc.message import Message, InvalidMessageError, MResponse, \
 class MsgpackRpc:
     def __init__(self):
         self._connection = Connection()
+
         self._dispatcher = {}
         self._response_callbacks = {}
         self._unpacker = msgpack.Unpacker()
@@ -53,9 +54,11 @@ class MsgpackRpc:
         :raises :BrokenPipeError if connection is not established
         :return: None
         """
-        logging.info("sending: \n" + msg.__str__())
-        if msg is None:
+
+        if not isinstance(msg, Message):
             raise InvalidMessageError("Unable to send None!")
+
+        logging.info("sending: \n" + msg.__str__())
         self._connection.send_message(msg.pack())
 
         if response_callback is not None:
@@ -119,7 +122,7 @@ class MsgpackRpc:
 
     def listen(self):
         """Blocks until connection is closed"""
-        self._connection.is_listening.acquire()
+        self._connection._disconnected.await()
 
     def _handle_response(self, msg: MResponse):
         """Handler for response messages (called by _message_callback)
