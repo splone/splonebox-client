@@ -19,7 +19,7 @@ see <http://www.gnu.org/licenses/>.
 
 import unittest
 
-from splonecli.api.result import Result, RegisterResult, RemoteError, RunResult
+from splonebox.api.result import Result, RegisterResult, RemoteError, RunResult
 
 
 class ResultTest(unittest.TestCase):

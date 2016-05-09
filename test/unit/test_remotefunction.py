@@ -21,7 +21,7 @@ import ctypes
 import unittest
 from unittest.mock import Mock
 
-from splonecli.api.remotefunction import RemoteFunction
+from splonebox.api.remotefunction import RemoteFunction
 
 
 @RemoteFunction

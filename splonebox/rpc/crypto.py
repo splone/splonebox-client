@@ -25,8 +25,8 @@ import logging
 import struct
 import os
 
-from splonecli.os.filesystem import open_lock
-from splonecli.os.filesystem import save_sync
+from splonebox.os.filesystem import open_lock
+from splonebox.os.filesystem import save_sync
 
 counterlow = 0
 counterhigh = 0

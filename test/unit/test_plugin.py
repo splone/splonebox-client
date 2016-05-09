@@ -21,9 +21,9 @@ import unittest
 from unittest.mock import Mock
 
 import test.mocks as mocks
-from splonecli.api.plugin import Plugin
-from splonecli.rpc.message import MResponse, MRequest
-from splonecli.api.remotefunction import RemoteFunction
+from splonebox.api.plugin import Plugin
+from splonebox.rpc.message import MResponse, MRequest
+from splonebox.api.remotefunction import RemoteFunction
 
 
 class PluginTest(unittest.TestCase):

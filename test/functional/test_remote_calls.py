@@ -24,8 +24,8 @@ import msgpack
 import libnacl
 from unittest.mock import Mock
 
-from splonecli.api.plugin import Plugin
-from splonecli.api.remotefunction import RemoteFunction
+from splonebox.api.plugin import Plugin
+from splonebox.api.remotefunction import RemoteFunction
 from test import mocks
 
 

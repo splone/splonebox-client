@@ -20,10 +20,10 @@ see <http://www.gnu.org/licenses/>.
 import socket
 from queue import Queue
 from unittest.mock import Mock
-from splonecli.api.plugin import Plugin
-from splonecli.rpc import connection
-from splonecli.rpc.connection import Connection
-from splonecli.rpc.msgpackrpc import MsgpackRpc
+from splonebox.api.plugin import Plugin
+from splonebox.rpc import connection
+from splonebox.rpc.connection import Connection
+from splonebox.rpc.msgpackrpc import MsgpackRpc
 
 
 # noinspection PyProtectedMember

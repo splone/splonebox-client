@@ -21,11 +21,11 @@ import logging
 
 from threading import Thread, ThreadError
 
-from splonecli.rpc.message import MResponse, MRequest, InvalidMessageError
-from splonecli.rpc.msgpackrpc import MsgpackRpc
-from splonecli.api.apicall import ApiRegister, ApiRun
-from splonecli.api.remotefunction import RemoteFunction
-from splonecli.api.result import RunResult, Result, RegisterResult
+from splonebox.rpc.message import MResponse, MRequest, InvalidMessageError
+from splonebox.rpc.msgpackrpc import MsgpackRpc
+from splonebox.api.apicall import ApiRegister, ApiRun
+from splonebox.api.remotefunction import RemoteFunction
+from splonebox.api.result import RunResult, Result, RegisterResult
 
 
 class Plugin:

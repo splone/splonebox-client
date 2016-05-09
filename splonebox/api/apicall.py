@@ -19,7 +19,7 @@ see <http://www.gnu.org/licenses/>.
 
 import copy
 
-from splonecli.rpc.message import MRequest, InvalidMessageError
+from splonebox.rpc.message import MRequest, InvalidMessageError
 
 
 class ApiCall:
