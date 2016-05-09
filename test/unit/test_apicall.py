@@ -21,8 +21,8 @@ see <http://www.gnu.org/licenses/>.
 import unittest
 
 
-from splonecli.api.apicall import InvalidApiCallError, ApiRun, ApiRegister
-from splonecli.rpc.message import MRequest, InvalidMessageError
+from splonebox.api.apicall import InvalidApiCallError, ApiRun, ApiRegister
+from splonebox.rpc.message import MRequest, InvalidMessageError
 
 class ApiCallTest(unittest.TestCase):
     def test_from_msgpack_request(self):

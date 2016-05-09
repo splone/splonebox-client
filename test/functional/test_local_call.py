@@ -21,9 +21,9 @@ import ctypes
 import unittest
 from unittest.mock import Mock
 
-from splonecli.api.apicall import ApiRun
-from splonecli.api.plugin import Plugin
-from splonecli.api.remotefunction import RemoteFunction
+from splonebox.api.apicall import ApiRun
+from splonebox.api.plugin import Plugin
+from splonebox.api.remotefunction import RemoteFunction
 from test import mocks
 
 

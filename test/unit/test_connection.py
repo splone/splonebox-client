@@ -4,8 +4,8 @@ import libnacl
 import socket
 
 from test import mocks
-from splonecli.rpc.connection import Connection
-from splonecli.rpc.crypto import InvalidPacketException, \
+from splonebox.rpc.connection import Connection
+from splonebox.rpc.crypto import InvalidPacketException, \
     PacketTooShortException
 
 

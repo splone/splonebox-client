@@ -2,7 +2,7 @@ import unittest
 import libnacl
 import struct
 
-from splonecli.rpc.crypto import Crypto
+from splonebox.rpc.crypto import Crypto
 
 
 class CryptoTest(unittest.TestCase):

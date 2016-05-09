@@ -20,9 +20,9 @@ see <http://www.gnu.org/licenses/>.
 import unittest
 import msgpack
 from unittest.mock import Mock
-from splonecli.rpc.message import MRequest, InvalidMessageError, MNotify, \
+from splonebox.rpc.message import MRequest, InvalidMessageError, MNotify, \
  MResponse
-from splonecli.rpc.msgpackrpc import MsgpackRpc
+from splonebox.rpc.msgpackrpc import MsgpackRpc
 from test import mocks
 
 

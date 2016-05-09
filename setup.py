@@ -7,5 +7,5 @@ setup(name='Splonebox Python Client',
       description='A client implementation to communicate with the splonebox core',
       install_requires=['pycrypto>=2.6.1', 'msgpack-python>=0.4.6'],
       author='bontric',
-      packages=['splonecli', 'splonecli.api', 'splonecli.rpc'],
+      packages=['splonebox', 'splonebox.api', 'splonebox.rpc'],
       license='GNU Lesser General Public License v3')

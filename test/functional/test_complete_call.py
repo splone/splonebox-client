@@ -20,9 +20,9 @@ see <http://www.gnu.org/licenses/>.
 import ctypes
 import unittest
 import msgpack
-from splonecli.api.plugin import Plugin
-from splonecli.api.remotefunction import RemoteFunction
-from splonecli.rpc.message import MRequest, MResponse
+from splonebox.api.plugin import Plugin
+from splonebox.api.remotefunction import RemoteFunction
+from splonebox.rpc.message import MRequest, MResponse
 from test import mocks
 
 
