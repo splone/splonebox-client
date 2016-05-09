@@ -71,7 +71,7 @@ class CryptoTest(unittest.TestCase):
         extr = self.crypt.crypto_read(msg)
         self.assertEqual(extr, payload)
 
-        # test if the crypto is able to encrypt a server message properly
+        # test if the crypto is able to encrypt a message properly
         payload = libnacl.randombytes(96)
         data = self.crypt.crypto_write(payload)
 
