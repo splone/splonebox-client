@@ -198,6 +198,8 @@ class Plugin:
     def _execute_function(self, fun, args, call_id):
         try:
             result = fun(args)
+            if result is None:
+                return
 
             result_call = ApiResult(call_id, result)
 
@@ -219,16 +221,18 @@ class Plugin:
             response.error = [400,
                               "Received Message is not a valid result call"]
             self._rpc.send(response)
+            return
 
         try:
             self._results_pending[result_call.get_call_id()].set_result(
                 result_call.get_result())
             response.response = [result_call.get_call_id()]
             self._rpc.send(response)
-
+            self._results_pending.pop(result_call.get_call_id())
         except KeyError:
             response.error = [404, "Call id does not match any call"]
             self._rpc.send(response)
+            return
 
 
 class PluginError(Exception):

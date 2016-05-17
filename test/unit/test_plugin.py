@@ -29,7 +29,7 @@ from splonebox.api.remotefunction import RemoteFunction
 
 
 class PluginTest(unittest.TestCase):
-    def test_register(self):
+    def test_00_register(self):
         plug = Plugin("abc", "foo", "bar", "bob", "alice")
 
         rpc_send_mock = mocks.plug_rpc_send(plug)
@@ -48,7 +48,7 @@ class PluginTest(unittest.TestCase):
         self.assertEquals(
             len(call_args.arguments[1]), 0)  # no function registered
 
-    def test_connect(self):
+    def test_10_connect(self):
         plug = Plugin("abc", "foo", "bar", "bob", "alice")
         connect_rpc_mock = mocks.plug_rpc_connect(plug)
 
@@ -56,7 +56,7 @@ class PluginTest(unittest.TestCase):
         connect_rpc_mock.assert_called_with("hostname", 1234)
         # Note: connect is just a wrapper for Connection.connect()
 
-    def test_run(self):
+    def test_20_run(self):
         plug = Plugin("abc", "foo", "bar", "bob", "alice")
 
         rpc_send_mock = mocks.plug_rpc_send(plug)
@@ -72,12 +72,12 @@ class PluginTest(unittest.TestCase):
         self.assertEqual(call_args.arguments[2], [1, "foo"])
         pass
 
-    def test_handle_run(self):
+    def test_30_handle_run(self):
         plug = Plugin("abc", "foo", "bar", "bob", "alice")
         send = mocks.plug_rpc_send(plug)  # catch results/responses
 
         mock = Mock()
-
+        mock.return_value = "return"
         RemoteFunction.remote_functions["foo"] = (mock, ["foo", "", []])
 
         msg = MRequest()
@@ -91,6 +91,9 @@ class PluginTest(unittest.TestCase):
         mock.assert_called_with([1, 1.1, "hi"])
         # request was valid -> 1x response + 1x result)
         self.assertEqual(send.call_count, 2)
+        self.assertEqual(send.call_args_list[1][0][0].arguments[0][0], 123)
+        self.assertEqual(send.call_args_list[1][0][0].arguments[1][0],
+                         "return")
 
         send.reset_mock()  # reset call count
         msg.arguments = [[None, 123], b'mock', [1, 1.1, "hi"]]
@@ -110,7 +113,7 @@ class PluginTest(unittest.TestCase):
 
         RemoteFunction.remote_functions = {}
 
-    def test_handle_response(self):
+    def test_40_handle_response(self):
         plug = Plugin("abc", "foo", "bar", "bob", "alice")
         send_mock = mocks.plug_rpc_send(plug)
 
@@ -140,14 +143,15 @@ class PluginTest(unittest.TestCase):
         plug._handle_response(response)
         self.assertEqual(result.get_status(), -1)
 
-    def test_handle_result(self):
+    def test_50_handle_result(self):
         plug = Plugin("abc", "foo", "bar", "bob", "alice")
         send_mock = mocks.plug_rpc_send(plug)
 
         call_id = 1234
         payload = "test"
-        call = ApiResult(call_id, payload)
 
+        # valid result request
+        call = ApiResult(call_id, payload)
         result = RunResult()
         result.set_id(call_id)
         plug._results_pending[call_id] = result
@@ -159,4 +163,31 @@ class PluginTest(unittest.TestCase):
 
         response = MResponse(call.msg.get_msgid())
         response.response = [call_id]
+        send_mock.assert_called_once_with(response)
+
+        self.assertIsNone(plug._results_pending.get(call_id))
+
+        # invalid result request
+        call = ApiResult(call_id, payload)
+        result = RunResult()
+        result.set_id(call_id)
+        send_mock.reset_mock()
+        call.msg.arguments[0][0] = "notanint"
+        plug._results_pending[call_id] = result
+        plug._handle_result(call.msg)
+
+        self.assertEqual(result.get_status(), 1)
+        response = MResponse(call.msg.get_msgid())
+        response.error = [400,
+                          "Received Message is not a valid result call"]
+        send_mock.assert_called_once_with(response)
+        self.assertIsNotNone(plug._results_pending.get(call_id))
+        plug._results_pending.pop(call_id)
+
+        # result does not match any call
+        call = ApiResult(call_id, payload)
+        send_mock.reset_mock()
+        plug._handle_result(call.msg)
+        response = MResponse(call.msg.get_msgid())
+        response.error = [404, "Call id does not match any call"]
         send_mock.assert_called_once_with(response)
