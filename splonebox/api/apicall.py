@@ -202,9 +202,53 @@ class ApiRun(ApiCall):
         return self.msg.arguments[1]
 
 
-class InvalidApiCallError(Exception):
-    def __init__(self, value: str):
-        self.value = value
+class ApiResult(ApiCall):
+    @staticmethod
+    def from_msgpack_request(msg: MRequest):
 
-    def __str__(self) -> str:
-        return self.value
+        if not isinstance(msg.function, str) or msg.function != "result":
+            raise InvalidMessageError(
+                "Invalid result Request, specified method is not result")
+
+        if not isinstance(msg.arguments, list):
+            raise InvalidMessageError(
+                "Invalid result Request, arguments is not a list")
+
+        if len(msg.arguments) != 2:
+            raise InvalidMessageError(
+                "Invalid result Request, arguments length has to be 2")
+
+        if not isinstance(msg.arguments[0], list) or len(msg.arguments[0]) != 1:
+            raise InvalidMessageError(
+                "Invalid result Request, call_id is not in a list")
+
+        if not isinstance(msg.arguments[1], list) or len(msg.arguments[1]) != 1:
+            raise InvalidMessageError(
+                "Invalid result Request, result is not in a list")
+
+        result = ApiResult(msg.arguments[0][0], msg.arguments[1][0])
+        result.msg._msgid = msg._msgid
+
+        return result
+
+    def __init__(self, call_id: int, result):
+        super().__init__()
+
+        if not isinstance(call_id, int):
+            raise InvalidApiCallError("call_id has to be an integer")
+
+        if result is None:
+            raise InvalidApiCallError("Result can not be none!")
+
+        self.msg.function = "result"
+        self.msg.arguments = [[call_id], [result]]
+
+    def get_call_id(self) -> int:
+        return self.msg.arguments[0][0]
+
+    def get_result(self):
+        return self.msg.arguments[1][0]
+
+
+class InvalidApiCallError(Exception):
+    pass

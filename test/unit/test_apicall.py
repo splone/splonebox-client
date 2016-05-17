@@ -21,12 +21,90 @@ see <http://www.gnu.org/licenses/>.
 import unittest
 
 
-from splonebox.api.apicall import InvalidApiCallError, ApiRun, ApiRegister
+from splonebox.api.apicall import InvalidApiCallError, ApiRun, ApiRegister,\
+    ApiResult
+
 from splonebox.rpc.message import MRequest, InvalidMessageError
 
 
 class ApiCallTest(unittest.TestCase):
-    def test_from_msgpack_request(self):
+    def test_00_apiresult(self):
+        call_id = 1234
+        payload = [12314, 1.32, "ping"]
+
+        call = ApiResult(call_id, payload)
+        self.assertEqual(call.get_call_id(), call_id)
+        self.assertEqual(call.get_result(), payload)
+
+        with self.assertRaises(InvalidApiCallError):
+            ApiResult("not an int", payload)
+
+        with self.assertRaises(InvalidApiCallError):
+            ApiResult(call_id, None)
+
+    def test_10_result_from_msgpack_request(self):
+        call_id = 1234
+        payload = [12314, 1.32, "ping"]
+        msg = ApiResult(call_id, payload).msg
+
+        call = ApiResult.from_msgpack_request(msg)
+        self.assertEqual(call.get_call_id(), call_id)
+        self.assertEqual(call.get_result(), payload)
+
+        msg = ApiResult(call_id, payload).msg
+        msg.function = "run"
+        with self.assertRaises(InvalidMessageError):
+            ApiResult.from_msgpack_request(msg)
+
+        msg = ApiResult(call_id, payload).msg
+        msg.arguments = 123
+        with self.assertRaises(InvalidMessageError):
+            ApiResult.from_msgpack_request(msg)
+
+        msg = ApiResult(call_id, payload).msg
+        msg.arguments = [1, 2, 3]
+        with self.assertRaises(InvalidMessageError):
+            ApiResult.from_msgpack_request(msg)
+
+        msg = ApiResult(call_id, payload).msg
+        msg.arguments[0] = call_id
+        with self.assertRaises(InvalidMessageError):
+            ApiResult.from_msgpack_request(msg)
+
+        msg = ApiResult(call_id, payload).msg
+        msg.arguments[1] = payload
+        with self.assertRaises(InvalidMessageError):
+            ApiResult.from_msgpack_request(msg)
+
+    def test_20_apirun(self):
+        api_key = "api_key"
+        function_name = "name"
+        args = [0]
+
+        call = ApiRun(api_key, function_name, args)
+        self.assertEqual(call.msg.function, "run")
+        self.assertEqual(call.get_api_key(), api_key)
+        self.assertEqual(call.get_method_name(), function_name)
+        self.assertEqual(call.get_method_args(), args)
+        self.assertEqual(call.msg.arguments, [[api_key, None], function_name,
+                                              args])
+
+        with self.assertRaises(InvalidApiCallError):
+            ApiRun(2, function_name, args)
+
+        with self.assertRaises(InvalidApiCallError):
+            ApiRun(api_key, 2, args)
+
+        with self.assertRaises(InvalidApiCallError):
+            ApiRun(api_key, function_name, [None])
+
+        with self.assertRaises(InvalidApiCallError):
+            ApiRun(api_key, function_name, [[]])
+
+        with self.assertRaises(InvalidApiCallError):
+            ApiRun(api_key, function_name, [object()])
+
+    def test_30_run_from_msgpack_request(self):
         msg = MRequest()
         msg.function = "run"
 
@@ -77,7 +155,7 @@ class ApiCallTest(unittest.TestCase):
         with self.assertRaises(InvalidMessageError):
             ApiRun.from_msgpack_request(msg)
 
-    def test_apiregister(self):
+    def test_40_apiregister(self):
         metadata = ["api_key", "plugin_name", "description", "MIT", "Guy"]
         functions = [["foo", "do_foo", [3, -1, 2.0, "", False, b'']]]
         call = ApiRegister(metadata, functions)
@@ -120,32 +198,3 @@ class ApiCallTest(unittest.TestCase):
 
         with self.assertRaises(InvalidApiCallError):
             ApiRegister(metadata, [["foo", 1, []]])
-
-
-    def test_apirun(self):
-        api_key = "api_key"
-        function_name = "name"
-        args = [0]
-
-        call = ApiRun(api_key, function_name, args)
-        self.assertEqual(call.msg.function, "run")
-        self.assertEqual(call.get_api_key(), api_key)
-        self.assertEqual(call.get_method_name(), function_name)
-        self.assertEqual(call.get_method_args(), args)
-        self.assertEqual(call.msg.arguments, [[api_key, None], function_name,
-                                              args])
-
-        with self.assertRaises(InvalidApiCallError):
-            ApiRun(2, function_name, args)
-
-        with self.assertRaises(InvalidApiCallError):
-            ApiRun(api_key, 2, args)
-
-        with self.assertRaises(InvalidApiCallError):
-            ApiRun(api_key, function_name, [None])
-
-        with self.assertRaises(InvalidApiCallError):
-            ApiRun(api_key, function_name, [[]])
-
-        with self.assertRaises(InvalidApiCallError):
-            ApiRun(api_key, function_name, [object()])

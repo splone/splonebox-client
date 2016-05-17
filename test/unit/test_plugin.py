@@ -23,6 +23,8 @@ from unittest.mock import Mock
 import test.mocks as mocks
 from splonebox.api.plugin import Plugin
 from splonebox.rpc.message import MResponse, MRequest
+from splonebox.api.apicall import ApiResult
+from splonebox.api.result import RunResult
 from splonebox.api.remotefunction import RemoteFunction
 
 
@@ -88,9 +90,7 @@ class PluginTest(unittest.TestCase):
         plug._active_threads.pop(123).join()
         mock.assert_called_with([1, 1.1, "hi"])
         # request was valid -> 1x response + 1x result)
-        # self.assertEqual(send.call_count, 2)
-        # Change this as soon as result is implemented!
-        self.assertEqual(send.call_count, 1)
+        self.assertEqual(send.call_count, 2)
 
         send.reset_mock()  # reset call count
         msg.arguments = [[None, 123], b'mock', [1, 1.1, "hi"]]
@@ -139,3 +139,24 @@ class PluginTest(unittest.TestCase):
         self.assertEqual(result.get_status(), 0)
         plug._handle_response(response)
         self.assertEqual(result.get_status(), -1)
+
+    def test_handle_result(self):
+        plug = Plugin("abc", "foo", "bar", "bob", "alice")
+        send_mock = mocks.plug_rpc_send(plug)
+
+        call_id = 1234
+        payload = "test"
+        call = ApiResult(call_id, payload)
+
+        result = RunResult()
+        result.set_id(call_id)
+        plug._results_pending[call_id] = result
+
+        plug._handle_result(call.msg)
+
+        self.assertEqual(result.get_status(), 2)
+        self.assertEqual(result.get_result(), payload)
+
+        response = MResponse(call.msg.get_msgid())
+        response.response = [call_id]
+        send_mock.assert_called_once_with(response)

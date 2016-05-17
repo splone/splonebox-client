@@ -23,7 +23,8 @@ from threading import Thread, ThreadError
 
 from splonebox.rpc.message import MResponse, MRequest, InvalidMessageError
 from splonebox.rpc.msgpackrpc import MsgpackRpc
-from splonebox.api.apicall import ApiRegister, ApiRun
+from splonebox.api.apicall import ApiRegister, ApiRun, ApiResult,\
+    InvalidApiCallError
 from splonebox.api.remotefunction import RemoteFunction
 from splonebox.api.result import RunResult, Result, RegisterResult
 
@@ -194,25 +195,40 @@ class Plugin:
             pass
 
     def _execute_function(self, fun, args, call_id):
-        msg_result = MRequest()
-        msg_result.function = "result"
         try:
             result = fun(args)
-            # Send Result
-            msg_result.arguments = [[call_id], [result]]
-            # self._rpc.send(msg_result)
-            logging.info("Would send result: " + msg_result.__str__())
-        # TODO: Error handling on API-level (not discussed yet - errors will be
-        # ignored!)
+
+            result_call = ApiResult(call_id, result)
+
+            logging.info("Sending result: " + result_call.msg.__str__())
+            self._rpc.send(result_call.msg)
+
+            # TODO: Error handling on API-level (not discussed yet -
+            # errors will be ignored)!
         except TypeError:
             pass
         except Exception:
             pass
 
+    def _handle_result(self, msg: MRequest):
+        response = MResponse(msg.get_msgid())
+        try:
+            result_call = ApiResult.from_msgpack_request(msg)
+        except (InvalidApiCallError, InvalidMessageError):
+            response.error = [400,
+                              "Received Message is not a valid result call"]
+            self._rpc.send(response)
+
+        try:
+            self._results_pending[result_call.get_call_id()].set_result(
+                result_call.get_result())
+            response.response = [result_call.get_call_id()]
+            self._rpc.send(response)
+
+        except KeyError:
+            response.error = [404, "Call id does not match any call"]
+            self._rpc.send(response)
+
 
 class PluginError(Exception):
-    def __init__(self, value: str):
-        self.value = value
-
-    def __str__(self) -> str:
-        return self.value
+    pass
