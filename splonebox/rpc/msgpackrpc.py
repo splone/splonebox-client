@@ -122,7 +122,7 @@ class MsgpackRpc:
 
     def listen(self):
         """Blocks until connection is closed"""
-        self._connection._disconnected.await()
+        self._connection._disconnected.wait()
 
     def _handle_response(self, msg: MResponse):
         """Handler for response messages (called by _message_callback)
