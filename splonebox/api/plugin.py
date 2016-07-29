@@ -30,7 +30,6 @@ from splonebox.api.result import RunResult, Result, RegisterResult
 
 class Plugin:
     def __init__(self,
-                 api_key: str,
                  name: str,
                  desc: str,
                  author: str,
@@ -49,7 +48,7 @@ class Plugin:
         server's longterm key
         """
         # [<api_key>, <name>, <description>, <author>, <license>]
-        self._metadata = [api_key, name, desc, author, licence]
+        self._metadata = [name, desc, author, licence]
 
         self._rpc = MsgpackRpc()
         # register run function @ rpc dispatcher
