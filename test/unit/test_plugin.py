@@ -30,7 +30,7 @@ from splonebox.api.remotefunction import RemoteFunction
 
 class PluginTest(unittest.TestCase):
     def test_00_register(self):
-        plug = Plugin("abc", "foo", "bar", "bob", "alice")
+        plug = Plugin("foo", "bar", "bob", "alice")
 
         rpc_send_mock = mocks.plug_rpc_send(plug)
         plug.register(blocking=False)
@@ -43,13 +43,14 @@ class PluginTest(unittest.TestCase):
         self.assertEqual(call_args.function, 'register')  # register request
 
         self.assertEqual(call_args.arguments[0],
-                         ['abc', 'foo', 'bar', 'bob', 'alice'])  # metadata
+                         ['foo', 'bar', 'bob', 'alice'])  # metadata
 
         self.assertEquals(
             len(call_args.arguments[1]), 0)  # no function registered
 
     def test_10_connect(self):
-        plug = Plugin("abc", "foo", "bar", "bob", "alice")
+        plug = Plugin("foo", "bar", "bob", "alice")
+
         connect_rpc_mock = mocks.plug_rpc_connect(plug)
 
         plug.connect("hostname", 1234)
@@ -57,23 +58,23 @@ class PluginTest(unittest.TestCase):
         # Note: connect is just a wrapper for Connection.connect()
 
     def test_20_run(self):
-        plug = Plugin("abc", "foo", "bar", "bob", "alice")
+        plug = Plugin("foo", "bar", "bob", "alice")
 
         rpc_send_mock = mocks.plug_rpc_send(plug)
 
-        plug.run("apikey", "foo", [1, "foo"])
+        plug.run("plugin_id", "foo", [1, "foo"])
         call_args = rpc_send_mock.call_args[0][0]
 
         self.assertEqual(call_args._type, 0)  # 0 indicates message request
         self.assertTrue(0 <= call_args._msgid < pow(2, 32))  # valid msgid
         self.assertEqual(call_args.function, 'run')  # run request
-        self.assertEqual(call_args.arguments[0][0], "apikey")
+        self.assertEqual(call_args.arguments[0][0], "plugin_id")
         self.assertEqual(call_args.arguments[1], "foo")
         self.assertEqual(call_args.arguments[2], [1, "foo"])
         pass
 
     def test_30_handle_run(self):
-        plug = Plugin("abc", "foo", "bar", "bob", "alice")
+        plug = Plugin("foo", "bar", "bob", "alice")
         send = mocks.plug_rpc_send(plug)  # catch results/responses
 
         mock = Mock()
@@ -114,7 +115,7 @@ class PluginTest(unittest.TestCase):
         RemoteFunction.remote_functions = {}
 
     def test_40_handle_response(self):
-        plug = Plugin("abc", "foo", "bar", "bob", "alice")
+        plug = Plugin("foo", "bar", "bob", "alice")
         send_mock = mocks.plug_rpc_send(plug)
 
         result = plug.register(blocking=False)

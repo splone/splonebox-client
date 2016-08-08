@@ -36,7 +36,7 @@ class RemoteCallTest(unittest.TestCase):
             pass
 
         RemoteFunction(fun2)
-        plug = Plugin("abc", "foo", "bar", "bob", "alice")
+        plug = Plugin("foo", "bar", "bob", "alice")
         mock_send = mocks.rpc_connection_send(plug._rpc)
 
         plug.register(blocking=False)
@@ -44,29 +44,28 @@ class RemoteCallTest(unittest.TestCase):
 
         self.assertEqual(0, outgoing[0])
         self.assertEqual(b'register', outgoing[2])
-        self.assertEqual(
-            [b"abc", b"foo", b"bar", b"bob", b"alice"], outgoing[3][0])
-        self.assertIn(
-            [b'fun2', b'', [False, b'', 3, -1, 2.0, b'', -1]], outgoing[3][1])
+        self.assertEqual([b"foo", b"bar", b"bob", b"alice"], outgoing[3][0])
+        self.assertIn([b'fun2', b'', [False, b'', 3, -1, 2.0, b'', -1]],
+                      outgoing[3][1])
 
         # cleanup remote_functions
         RemoteFunction.remote_functions = {}
 
     def test_run_functional(self):
-        plug = Plugin("abc", "foo", "bar", "bob", "alice")
+        plug = Plugin("foo", "bar", "bob", "alice")
         mock_send = mocks.rpc_connection_send(plug._rpc)
 
-        plug.run("api_key", "function", [1, "hi", 42.317, b'hi'])
+        plug.run("plugin_id", "function", [1, "hi", 42.317, b'hi'])
         outgoing = msgpack.unpackb(mock_send.call_args[0][0])
 
         self.assertEqual(0, outgoing[0])
         self.assertEqual(b'run', outgoing[2])
-        self.assertEqual([b'api_key', None], outgoing[3][0])
+        self.assertEqual([b'plugin_id', None], outgoing[3][0])
         self.assertEqual(b"function", outgoing[3][1])
         self.assertEqual([1, b'hi', 42.317, b'hi'], outgoing[3][2])
 
     def test_connect_functional(self):
-        plug = Plugin("abc", "foo", "bar", "bob", "alice")
+        plug = Plugin("foo", "bar", "bob", "alice")
 
         mock_sock = mocks.connection_socket(plug._rpc._connection)
         plug._rpc._connection.listen = Mock()
