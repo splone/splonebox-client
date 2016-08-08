@@ -78,7 +78,7 @@ class ApiCallTest(unittest.TestCase):
             ApiRun.from_msgpack_request(msg)
 
     def test_apiregister(self):
-        metadata = ["api_key", "plugin_name", "description", "MIT", "Guy"]
+        metadata = ["plugin_id", "plugin_name", "description", "MIT", "Guy"]
         functions = [["foo", "do_foo", [3, -1, 2.0, "", False, b'']]]
         call = ApiRegister(metadata, functions)
 
@@ -121,31 +121,30 @@ class ApiCallTest(unittest.TestCase):
         with self.assertRaises(InvalidApiCallError):
             ApiRegister(metadata, [["foo", 1, []]])
 
-
     def test_apirun(self):
-        api_key = "api_key"
+        plugin_id = "plugin_id"
         function_name = "name"
         args = [0]
 
-        call = ApiRun(api_key, function_name, args)
+        call = ApiRun(plugin_id, function_name, args)
         self.assertEqual(call.msg.function, "run")
-        self.assertEqual(call.get_api_key(), api_key)
+        self.assertEqual(call.get_plugin_id(), plugin_id)
         self.assertEqual(call.get_method_name(), function_name)
         self.assertEqual(call.get_method_args(), args)
-        self.assertEqual(call.msg.arguments, [[api_key, None], function_name,
+        self.assertEqual(call.msg.arguments, [[plugin_id, None], function_name,
                                               args])
 
         with self.assertRaises(InvalidApiCallError):
             ApiRun(2, function_name, args)
 
         with self.assertRaises(InvalidApiCallError):
-            ApiRun(api_key, 2, args)
+            ApiRun(plugin_id, 2, args)
 
         with self.assertRaises(InvalidApiCallError):
-            ApiRun(api_key, function_name, [None])
+            ApiRun(plugin_id, function_name, [None])
 
         with self.assertRaises(InvalidApiCallError):
-            ApiRun(api_key, function_name, [[]])
+            ApiRun(plugin_id, function_name, [[]])
 
         with self.assertRaises(InvalidApiCallError):
-            ApiRun(api_key, function_name, [object()])
+            ApiRun(plugin_id, function_name, [object()])

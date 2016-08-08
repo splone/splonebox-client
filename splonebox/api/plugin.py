@@ -36,7 +36,6 @@ class Plugin:
                  licence: str,
                  debug=False):
         """
-        :param api_key: api key (make sure it was added to the core)
         :param name: Name of the plugin
         :param desc: Description of the plugin
         :param author: Author of the plugin
@@ -47,7 +46,7 @@ class Plugin:
         :param serverlongtermpk_path: path to file containing the
         server's longterm key
         """
-        # [<api_key>, <name>, <description>, <author>, <license>]
+        # [<name>, <description>, <author>, <license>]
         self._metadata = [name, desc, author, licence]
 
         self._rpc = MsgpackRpc()
@@ -126,17 +125,17 @@ class Plugin:
                 result.set_id(response.response[0])
                 self._results_pending[result.get_id()] = result
 
-    def run(self, api_key: str, function: str, arguments: []):
+    def run(self, plugin_id: str, function: str, arguments: []):
         """Run a remote function and return a :Result
 
         :param has_result: Does the called function have a result?
-        :param api_key: Targets api_key
+        :param plugin_id: Identifier of the plugin
         :param function: name of the function
         :param arguments: function arguments | empty list or None for no args
         :return: :RunResult
         :raises :RemoteRunError if run call failed
         """
-        run_call = ApiRun(api_key, function, arguments)
+        run_call = ApiRun(plugin_id, function, arguments)
         self._rpc.send(run_call.msg, self._handle_response)
 
         result = RunResult()

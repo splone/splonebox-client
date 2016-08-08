@@ -40,7 +40,6 @@ class ApiRegister(ApiCall):
         method, # "register" for obvious reasons
         [
             [                          # Metadata
-                <api key>,
                 <plugin name>,
                 <description>,
                 ...
@@ -62,7 +61,7 @@ class ApiRegister(ApiCall):
     def __init__(self, metadata: [], functions: []):
         """
         :param metadata: The Plugins Metadata:
-                    ["api_key", "name", "description", "author", "license"]
+                    ["name", "description", "author", "license"]
 
         :param functions: list of function descriptions
                     [[name,desc,[arg1,arg2..]], ...]
@@ -107,7 +106,7 @@ class ApiRun(ApiCall):
     method, # "run" for obvious reasons
         [
             [                          # Metadata
-                <(target) api_key>,
+                <(target) plugin_id>,
                 call_id
             ],
             <function name>,
@@ -166,16 +165,16 @@ class ApiRun(ApiCall):
 
         return call
 
-    def __init__(self, api_key: str, function_name: str, args: []):
+    def __init__(self, plugin_id: str, function_name: str, args: []):
         """
-        :param api_key: api_key of the plugin to be called
+        :param plugin_id: plugin identifier of the plugin to be called
         :param function_name: function wto be called
         :param args: list of arguments for the remote function
         :raises :InvalidApiCallError if the Information is invalid
         """
         super().__init__()
 
-        if not isinstance(api_key, str):
+        if not isinstance(plugin_id, str):
             raise InvalidApiCallError("plugin identifier has to be a string")
 
         if not isinstance(function_name, str):
@@ -190,12 +189,12 @@ class ApiRun(ApiCall):
 
         self.msg = MRequest()
         self.msg.function = "run"
-        self.msg.arguments = [[api_key, None], function_name, args]
+        self.msg.arguments = [[plugin_id, None], function_name, args]
 
     def get_method_args(self):
         return self.msg.arguments[2]
 
-    def get_api_key(self) -> str:
+    def get_plugin_id(self) -> str:
         return self.msg.arguments[0][0]
 
     def get_method_name(self) -> str:
