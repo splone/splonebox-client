@@ -36,7 +36,7 @@ class CompleteCall(unittest.TestCase):
 
         RemoteFunction(add)
 
-        plug = Plugin("abc", "foo", "bar", "bob", "alice")
+        plug = Plugin("foo", "bar", "bob", "alice")
 
         mock_send = mocks.rpc_connection_send(plug._rpc)
         result = plug.run("abc", "add", [7, 8])
@@ -44,7 +44,7 @@ class CompleteCall(unittest.TestCase):
         # receive request
         msg = MRequest.from_unpacked(msgpack.unpackb(mock_send.call_args[0][
             0]))
-        msg.arguments[0][0] = None  # remove api_key
+        msg.arguments[0][0] = None  # remove plugin id
         msg.arguments[0][1] = 123  # set call id
         plug._rpc._message_callback(msg.pack())
 
@@ -72,7 +72,7 @@ class CompleteCall(unittest.TestCase):
             pass
 
         RemoteFunction(fun)
-        plug = Plugin("abc", "foo", "bar", "bob", "alice")
+        plug = Plugin("foo", "bar", "bob", "alice")
         mock_send = mocks.rpc_connection_send(plug._rpc)
 
         result = plug.register(blocking=False)
@@ -82,7 +82,7 @@ class CompleteCall(unittest.TestCase):
         self.assertEqual(0, outgoing[0])
         self.assertEqual(b'register', outgoing[2])
         self.assertEqual(
-            [b"abc", b"foo", b"bar", b"bob", b"alice"], outgoing[3][0])
+            [b"foo", b"bar", b"bob", b"alice"], outgoing[3][0])
         self.assertIn([b'fun', b'', []], outgoing[3][1])
 
         # test response handling
