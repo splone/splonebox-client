@@ -166,7 +166,7 @@ class ApiRun(ApiCall):
 
         return call
 
-    def __init__(self, api_key: str, function_name: str, args: []):
+    def __init__(self, plugin_key: str, function_name: str, args: []):
         """
         :param api_key: api_key of the plugin to be called
         :param function_name: function wto be called
@@ -175,7 +175,7 @@ class ApiRun(ApiCall):
         """
         super().__init__()
 
-        if not isinstance(api_key, str):
+        if not isinstance(plugin_key, str):
             raise InvalidApiCallError("plugin identifier has to be a string")
 
         if not isinstance(function_name, str):
@@ -190,7 +190,7 @@ class ApiRun(ApiCall):
 
         self.msg = MRequest()
         self.msg.function = "run"
-        self.msg.arguments = [[api_key, None], function_name, args]
+        self.msg.arguments = [[plugin_key, None], function_name, args]
 
     def get_method_args(self):
         return self.msg.arguments[2]
