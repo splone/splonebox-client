@@ -22,17 +22,22 @@ from unittest.mock import Mock
 
 import test.mocks as mocks
 from splonebox.api.plugin import Plugin
-from splonebox.rpc.message import MResponse, MRequest
-from splonebox.api.apicall import ApiResult
-from splonebox.api.result import RunResult
+from splonebox.api.core import Core
 from splonebox.api.remotefunction import RemoteFunction
+from splonebox.rpc.message import MRequest
 
 
 class PluginTest(unittest.TestCase):
-    def test_00_register(self):
-        plug = Plugin("foo", "bar", "bob", "alice")
+    def setUp(self):
+        # cleanup remote_functions
+        RemoteFunction.remote_functions = []
 
-        rpc_send_mock = mocks.plug_rpc_send(plug)
+    def test_00_register(self):
+        core = Core()
+        plug = Plugin("foo", "bar", "bob", "alice", core)
+
+        rpc_send_mock = mocks.core_rpc_send(core)
+
         plug.register(blocking=False)
         call_args = rpc_send_mock.call_args[0][0]
 
@@ -48,38 +53,16 @@ class PluginTest(unittest.TestCase):
         self.assertEquals(
             len(call_args.arguments[1]), 0)  # no function registered
 
-    def test_10_connect(self):
-        plug = Plugin("foo", "bar", "bob", "alice")
-
-        connect_rpc_mock = mocks.plug_rpc_connect(plug)
-
-        plug.connect("hostname", 1234)
-        connect_rpc_mock.assert_called_with("hostname", 1234)
-        # Note: connect is just a wrapper for Connection.connect()
-
-    def test_20_run(self):
-        plug = Plugin("foo", "bar", "bob", "alice")
-
-        rpc_send_mock = mocks.plug_rpc_send(plug)
-
-        plug.run("plugin_id", "foo", [1, "foo"])
-        call_args = rpc_send_mock.call_args[0][0]
-
-        self.assertEqual(call_args._type, 0)  # 0 indicates message request
-        self.assertTrue(0 <= call_args._msgid < pow(2, 32))  # valid msgid
-        self.assertEqual(call_args.function, 'run')  # run request
-        self.assertEqual(call_args.arguments[0][0], "plugin_id")
-        self.assertEqual(call_args.arguments[1], "foo")
-        self.assertEqual(call_args.arguments[2], [1, "foo"])
-        pass
-
-    def test_30_handle_run(self):
-        plug = Plugin("foo", "bar", "bob", "alice")
-        send = mocks.plug_rpc_send(plug)  # catch results/responses
+    def test_10_handle_run(self):
+        core = Core()
+        plug = Plugin("foo", "bar", "bob", "alice", core)
+        send = mocks.core_rpc_send(core)  # catch results/responses
 
         mock = Mock()
+        mock.__name__ = "foo"
         mock.return_value = "return"
-        RemoteFunction.remote_functions["foo"] = (mock, ["foo", "", []])
+        plug.functions["foo"] = mock
+        plug.function_meta.append(["foo", "", []])
 
         msg = MRequest()
         msg.function = "run"
@@ -111,84 +94,3 @@ class PluginTest(unittest.TestCase):
         self.assertEqual(send.call_count, 1)
         with self.assertRaises(KeyError):
             plug._active_threads[123]
-
-        RemoteFunction.remote_functions = {}
-
-    def test_40_handle_response(self):
-        plug = Plugin("foo", "bar", "bob", "alice")
-        send_mock = mocks.plug_rpc_send(plug)
-
-        result = plug.register(blocking=False)
-        register_msg = send_mock.call_args[0][0]
-        response = MResponse(register_msg._msgid)
-        response.response = []
-        self.assertEqual(result.get_status(), 0)
-        plug._handle_response(response)
-        self.assertEqual(result.get_status(), 2)
-
-        result = plug.run("key", "foo", [])
-        run_msg = send_mock.call_args[0][0]
-        response = MResponse(run_msg._msgid)
-        response.response = [123]
-        self.assertEqual(result.get_status(), 0)
-        plug._handle_response(response)
-        self.assertEqual(result.get_status(), 1)
-        self.assertEqual(result.get_id(), 123)
-
-        result = plug.run("key", "foo", [])
-        run_msg = send_mock.call_args[0][0]
-        response = MResponse(run_msg._msgid)
-        response.response = None
-        response.error = [123, b'error!']
-        self.assertEqual(result.get_status(), 0)
-        plug._handle_response(response)
-        self.assertEqual(result.get_status(), -1)
-
-    def test_50_handle_result(self):
-        plug = Plugin("abc", "foo", "bar", "bob", "alice")
-        send_mock = mocks.plug_rpc_send(plug)
-
-        call_id = 1234
-        payload = "test"
-
-        # valid result request
-        call = ApiResult(call_id, payload)
-        result = RunResult()
-        result.set_id(call_id)
-        plug._results_pending[call_id] = result
-
-        plug._handle_result(call.msg)
-
-        self.assertEqual(result.get_status(), 2)
-        self.assertEqual(result.get_result(), payload)
-
-        response = MResponse(call.msg.get_msgid())
-        response.response = [call_id]
-        send_mock.assert_called_once_with(response)
-
-        self.assertIsNone(plug._results_pending.get(call_id))
-
-        # invalid result request
-        call = ApiResult(call_id, payload)
-        result = RunResult()
-        result.set_id(call_id)
-        send_mock.reset_mock()
-        call.msg.arguments[0][0] = "notanint"
-        plug._results_pending[call_id] = result
-        plug._handle_result(call.msg)
-
-        self.assertEqual(result.get_status(), 1)
-        response = MResponse(call.msg.get_msgid())
-        response.error = [400,
-                          "Received Message is not a valid result call"]
-        send_mock.assert_called_once_with(response)
-        self.assertIsNotNone(plug._results_pending.get(call_id))
-        plug._results_pending.pop(call_id)
-
-        # result does not match any call
-        call = ApiResult(call_id, payload)
-        send_mock.reset_mock()
-        plug._handle_result(call.msg)
-        response = MResponse(call.msg.get_msgid())
-        response.error = [404, "Call id does not match any call"]
-        send_mock.assert_called_once_with(response)

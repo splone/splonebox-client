@@ -25,7 +25,6 @@ from splonebox.api.result import Result, RegisterResult, RemoteError, RunResult
 class ResultTest(unittest.TestCase):
     def test_result(self):
         res = Result()
-        self.assertIsNone(res.get_type())
         self.assertIsNone(res._error)
         self.assertFalse(res._event.is_set())
 
@@ -49,7 +48,6 @@ class ResultTest(unittest.TestCase):
     def test_register_result(self):
         res = RegisterResult()
 
-        self.assertEqual(res.get_type(), 0)
         self.assertEqual(res.get_status(), 0)
 
         res.success()
@@ -65,7 +63,6 @@ class ResultTest(unittest.TestCase):
     def test_run_result(self):
         res = RunResult()
 
-        self.assertEqual(res.get_type(), 1)
         self.assertEqual(res.get_status(), 0)
         self.assertIsNone(res.get_id())
         self.assertIsNone(res.get_result(blocking=False))

@@ -22,14 +22,8 @@ from threading import Event
 
 
 class Result():
-    """ A class for storing and handling results
-
-    The _type variable identifies the type of a result.
-    0 = RegisterResult
-    1 = RunResult
-    """
+    """ A class for storing and handling results """
     def __init__(self):
-        self._type = None
         self._error = None
         self._event = Event()
 
@@ -41,15 +35,11 @@ class Result():
         self._error = error
         self._event.set()
 
-    def get_type(self):
-        return self._type
-
 
 class RegisterResult(Result):
     """A Result returned by a non blocking register call."""
     def __init__(self):
         super().__init__()
-        self._type = 0
 
     def get_status(self) -> int:
         """ Get call status
@@ -89,7 +79,6 @@ class RunResult(Result):
     """A Result returned by a run call"""
     def __init__(self):
         super().__init__()
-        self._type = 1
         self._id = None
         self._result = None
 

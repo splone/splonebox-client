@@ -21,22 +21,22 @@ import socket
 from queue import Queue
 from unittest.mock import Mock
 from splonebox.api.plugin import Plugin
-from splonebox.rpc import connection
+from splonebox.api.core import Core
 from splonebox.rpc.connection import Connection
 from splonebox.rpc.msgpackrpc import MsgpackRpc
 
 
 # noinspection PyProtectedMember
-def plug_rpc_connect(plug: Plugin) -> Mock:
+def core_rpc_connect(core: Core) -> Mock:
     # Check for reference: https://docs.python.org/3/library/unittest.mock.html
-    plug._rpc.connect = Mock()
-    return plug._rpc.connect
+    core._rpc.connect = Mock()
+    return core._rpc.connect
 
 
 # noinspection PyProtectedMember
-def plug_rpc_send(plug: Plugin) -> Mock:
-    plug._rpc.send = Mock()
-    return plug._rpc.send
+def core_rpc_send(core: Core) -> Mock:
+    core._rpc.send = Mock()
+    return core._rpc.send
 
 
 # noinspection PyProtectedMember
