@@ -111,7 +111,13 @@ class Plugin:
 
         :param responset: Response Message containing response/error
         """
+        #TODO: Response handling should be improved
+        # -> use specific callbacks for every type of response
         result = self._responses_pending.pop(response.get_msgid())
+        if result is None:
+            logging.info("Received result response")
+            return
+
         if response.error is not None:
             result.set_error([response.error[0], response.error[1].decode(
                 'ascii')])
@@ -202,7 +208,10 @@ class Plugin:
             result_call = ApiResult(call_id, result)
 
             logging.info("Sending result: " + result_call.msg.__str__())
-            self._rpc.send(result_call.msg)
+
+            self._rpc.send(result_call.msg,
+                           response_callback=self._handle_response)
+            self._responses_pending[result_call.msg.get_msgid()] = None
 
             # TODO: Error handling on API-level (not discussed yet -
             # errors will be ignored)!
@@ -231,7 +240,6 @@ class Plugin:
             response.error = [404, "Call id does not match any call"]
             self._rpc.send(response)
             return
-
 
 class PluginError(Exception):
     pass
