@@ -68,7 +68,6 @@ class Plugin:
         logging.info("Plugin object created..\n")
 
     def connect(self, name: str, port: int):
-        # Note: This wraps Connection.connect(name,port)
         """Connects to given host
 
         :param name: (ip/web address)
@@ -77,6 +76,7 @@ class Plugin:
         :raises: socket.gaierror if Host unknown
         :raises: :ConnectionError if hostname or port are invalid types
         """
+
         self._rpc.connect(name, port)
 
     def register(self, blocking=True):
