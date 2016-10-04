@@ -62,7 +62,7 @@ class PluginTest(unittest.TestCase):
         mock.__name__ = "foo"
         mock.return_value = "return"
         plug.functions["foo"] = mock
-        plug.function_meta.append(["foo", "", []])
+        plug.function_meta["foo"] = (["", []])
 
         msg = MRequest()
         msg.function = "run"

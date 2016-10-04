@@ -20,6 +20,7 @@ from splonebox.api.apicall import ApiRun
 from splonebox.api.result import RunResult
 from splonebox.api.core import Core
 
+import logging
 
 class RemotePlugin:
 
@@ -36,8 +37,8 @@ class RemotePlugin:
         self.author = author
         self.licence = licence
         self.core = core
-
-        self.pending_results = []
+        self.function_meta = {}
+        self.results = []
 
     def run(self, function: str, arguments: []) -> RunResult:
         """Run a remote function and return a :Result
@@ -48,13 +49,11 @@ class RemotePlugin:
         :raises :RemoteRunError if run call failed
         """
         run_call = ApiRun(self.id, function, arguments)
-        result = self.core.send_run(run_call.msg)
-        self.pending_results.append(result)
-        return result
+        result = self.core.send_run(run_call)
 
-    def get_pending_results(self) -> []:
-        l = []
-        for r in self.pending_results:
-            if(r.get_status == 1):
-                l.append(r)
-        return l
+        result.called_by_id = self.id
+        result.called_function = function
+        result.call_arguments = arguments
+        self.results.append(result)
+
+        return result

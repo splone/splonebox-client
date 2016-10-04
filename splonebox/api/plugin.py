@@ -16,6 +16,7 @@ along with this splonebox python client library.  If not,
 see <http://www.gnu.org/licenses/>.
 
 """
+import logging
 from threading import Thread, ThreadError
 from types import FunctionType
 
@@ -26,12 +27,8 @@ from splonebox.api.core import Core
 
 
 class Plugin:
-    def __init__(self,
-                 name: str,
-                 desc: str,
-                 author: str,
-                 licence: str,
-                 core: Core):
+    def __init__(self, name: str, desc: str, author: str, licence: str, core:
+                 Core):
         """
         :param name: Name of the plugin
         :param desc: Description of the plugin
@@ -45,25 +42,29 @@ class Plugin:
         """
         # [<name>, <description>, <author>, <license>]
         self._metadata = [name, desc, author, licence]
-        self.function_meta = []
+        self.function_meta = {}
 
         # active threads
         self._active_threads = {int: Thread()}
 
-        core._rpc.register_function(self._handle_run, "run")
+        core.set_run_handler(self._handle_run)
         self.core = core
 
         # A dict containing all functions this plugin wants to register
         self.functions = {}
 
         for f in RemoteFunction.remote_functions:
-                self.functions[f.__name__] = f
-                self.function_meta.append([f.__name__, f.__doc__, f.args])
+            self.functions[f.__name__] = f
+            self.function_meta[f.__name__] = [f.__doc__, f.args]
 
     def add_function(self, func: FunctionType):
+        """ Manually add a function to the plugin
+        (Note: Functions with the @RemoteFunction decorator are
+        added automatically)
+        """
         f = RemoteFunction(func)
         self.functions[f.__name__] = f
-        self.function_meta.append([f.__name__, f.__doc__, f.args])
+        self.function_meta[f.__name__] = [f.__doc__, f.args]
 
     def register(self, blocking=True):
         """Registers the Plugin and all annotated functions @ the core.
@@ -74,13 +75,10 @@ class Plugin:
         :raises :BrokenPipeError if something is wrong with the connection
         :raises :RemoteError if the register call was invalid
         """
+        fun_meta = [[k, v[0], v[1]] for k, v in self.function_meta.items()]
+        reg_call = ApiRegister(self._metadata, fun_meta)
 
-        # todo: result handling
-        # _rpc.register_function(plugin._handle_result, "result")
-
-        reg_call = ApiRegister(self._metadata, self.function_meta)
-
-        result = self.core.send_register(reg_call.msg)
+        result = self.core.send_register(reg_call)
 
         if blocking:
             result.await()
@@ -134,13 +132,15 @@ class Plugin:
 
             result_call = ApiResult(call_id, result)
 
-            self.core.send_result(result_call.msg)
+            self.core.send_result(result_call)
 
             # TODO: Error handling on API-level (not discussed yet -
             # errors will be ignored)!
-        except TypeError:
+        except TypeError as e:
+            logging.error("ERROR: " + e.__str__())
             pass
-        except Exception:
+        except Exception as e:
+            logging.error("ERROR: " + e.__str__())
             pass
 
 

@@ -19,6 +19,7 @@ see <http://www.gnu.org/licenses/>.
 
 import logging
 from threading import Event
+import datetime
 
 
 class Result():
@@ -26,6 +27,11 @@ class Result():
     def __init__(self):
         self._error = None
         self._event = Event()
+        self.init_ts = datetime.datetime.now().strftime("%I:%M%p on %B %d, %Y")
+        self.fin_ts = -1
+        self.called_function = None
+        self.called_by_id = None
+        self.call_arguments = None
 
     def set_error(self, error: []):
         if not isinstance(error,
@@ -33,6 +39,7 @@ class Result():
                               error[0], int) or not isinstance(error[1], str):
             raise RemoteError(400, "Invalid error result!")
         self._error = error
+        self.fin_ts = datetime.datetime.now().strftime("%I:%M%p on %B %d, %Y")
         self._event.set()
 
 
@@ -72,6 +79,7 @@ class RegisterResult(Result):
         This will be called by  :Plugin as soon as
         a valid response has been received
         """
+        self.fin_ts = datetime.datetime.now().strftime("%I:%M%p on %B %d, %Y")
         self._event.set()
 
 
@@ -127,7 +135,9 @@ class RunResult(Result):
 
     def set_result(self, result):
         self._result = result
+        self.fin_ts = datetime.datetime.now().strftime("%I:%M%p on %B %d, %Y")
         self._event.set()
+
 
     def get_id(self) -> int:
         return self._id

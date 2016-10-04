@@ -20,15 +20,17 @@ import logging
 
 from splonebox.rpc.msgpackrpc import MsgpackRpc
 from splonebox.rpc.message import MResponse, MRequest, InvalidMessageError
-from splonebox.api.apicall import ApiResult, InvalidApiCallError
+from splonebox.api.apicall import ApiRun, ApiResult
+from splonebox.api.apicall import ApiRegister, InvalidApiCallError
 from splonebox.api.result import Result, RunResult, RegisterResult
 
 
 class Core():
     def __init__(self):
         self._rpc = MsgpackRpc()
+        self._rpc.register_function(self._handle_result, "result")
         self._responses_pending = {int: Result()}
-        self._results_pending = {int: Result()}  # call_id: result
+        self._results_pending = {int: RunResult()}  # call_id: result
 
     def enable_debugging(self):
         logging.basicConfig(level=logging.INFO)
@@ -40,15 +42,27 @@ class Core():
         """
         self._rpc.connect(addr, port)
 
-    def send_run(self, msg):
+    def listen(self):
+        """Listen for incoming messages from server"""
+        self._rpc.listen()
+
+    def disconnect(self):
+        """Disconnect from server"""
+        self._rpc.disconnect()
+
+    def set_run_handler(self, function):
+        """ Set the function to be called on incomming run requests """
+        self._rpc.register_function(function, "run")
+
+    def send_run(self, call: ApiRun):
         """Sends a message to the server
         :param msg Request or response
         :param callback None if msg is a Response.
         Callback for a response if msg is a request
         """
         result = RunResult()
-        self._responses_pending[msg.get_msgid()] = result
-        self._rpc.send(msg, self._handle_run_response)
+        self._responses_pending[call.msg.get_msgid()] = result
+        self._rpc.send(call.msg, self._handle_run_response)
         return result
 
     def _handle_run_response(self, msg: MResponse):
@@ -66,18 +80,21 @@ class Core():
             result.set_id(msg.response[0])
             self._results_pending[result.get_id()] = result
 
-    def send_result(self, msg):
-        logging.info("Sending result: " + msg.__str__())
-        self._rpc.send(msg, callback=self._handle_result_response)
+    def send_result(self, call: ApiResult):
+        """Send a result API call to the server"""
+        logging.info("Sending result: " + call.msg.__str__())
+        self._rpc.send(call.msg,
+                       response_callback=self._handle_result_response)
 
     def _handle_result_response(self, msg: MResponse):
         logging.info("Result request successfull")
         # TODO: Discuss error handling on invalid result request
 
-    def send_register(self, msg):
+    def send_register(self, call: ApiRegister):
+        """Send a register API call to the server"""
         result = RegisterResult()
-        self._responses_pending[msg.get_msgid()] = result
-        self._rpc.send(msg, self._handle_register_response)
+        self._responses_pending[call.msg.get_msgid()] = result
+        self._rpc.send(call.msg, self._handle_register_response)
         return result
 
     def _handle_register_response(self, msg: MResponse):
@@ -101,9 +118,9 @@ class Core():
             self._results_pending[result_call.get_call_id()].set_result(
                 result_call.get_result())
             # TODO: error handling
-            self.send_success_response(msg.get_callid(),
+            self.send_success_response(msg.get_msgid(),
                                        [result_call.get_call_id()])
-            self._results_pending.pop(result_call.get_call_id())
+            # self._results_pending.pop(result_call.get_call_id())
         except KeyError:
             self.send_error_response(msg.get_msgid(), 404,
                                      "Call id does not match any call")
@@ -120,14 +137,6 @@ class Core():
         msg.error = None
         msg.response = response
         self._rpc.send(msg)
-
-    def listen(self):
-        """Listen for incoming messages from server"""
-        self._rpc.listen()
-
-    def disconnect(self):
-        """Disconnect from server"""
-        self._rpc.disconnect()
 
 
 class CoreError(Exception):
