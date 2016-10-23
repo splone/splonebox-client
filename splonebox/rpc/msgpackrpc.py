@@ -33,6 +33,7 @@ class MsgpackRpc:
         self._dispatcher = {}
         self._response_callbacks = {}
         self._unpacker = msgpack.Unpacker()
+        self._notification_handler = None
 
     def connect(self, host: str, port: int):
         """Connect to given host
@@ -107,14 +108,21 @@ class MsgpackRpc:
                 m.error = [418, "Unexpected exception occurred!"]
                 self.send(m)
 
-    def register_function(self, foo, name: str):
+    def register_function(self, func, name: str):
         """Register a function at msgpack rpc dispatcher
 
         :param name: Name of the function
         :param foo: A function reference
         :raises DispatcherError
         """
-        self._dispatcher[name] = foo
+        self._dispatcher[name] = func
+
+    def register_notification_handler(self, func):
+        """Register a Function that handles Notification messages
+
+        :param func: A function that takes a single MNotify message as argument
+        """
+        self._notification_handler = func
 
     def disconnect(self):
         """Disconnect from server"""
@@ -142,10 +150,11 @@ class MsgpackRpc:
 
             raise
 
-    def _handle_notify(self, msg: MNotify):
-        """Notfication messages are not used yet
-
-        :param msg: :MNotify
-        :return:
-        """
-        pass
+    def _handle_notify(self, msg):
+        if self.notification_handler is None:
+            m = MResponse(msg.get_msgid())
+            m.error = [400, "Unable to handle Notification message"]
+            self.send(m)
+            return
+        
+        self.notification_handler(msg)
