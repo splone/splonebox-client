@@ -17,7 +17,6 @@ see <http://www.gnu.org/licenses/>.
 
 """
 
-
 from uuid import uuid4
 import msgpack
 
@@ -28,7 +27,7 @@ class Message:
     https://github.com/msgpack-rpc/msgpack-rpc/blob/master/spec.md
     """
 
-    _max_message_id = pow(2, 32)-1
+    _max_message_id = pow(2, 32) - 1
 
     def __init__(self):
         self._type = None
@@ -103,12 +102,11 @@ class Message:
             return msg
 
         elif t == 2:
+            if not isinstance(unpacked[1], bytes):
+                raise InvalidMessageError("Invalid method")
             if not isinstance(unpacked[2], list):
                 raise InvalidMessageError("Notification body is invalid")
-            msg = MNotify()
-            msg._msgid = unpacked[1]
-            msg.body = unpacked[2]
-            return msg
+            return MNotify(unpacked[1].decode('ascii'), unpacked[2])
 
 
 class MRequest(Message):
@@ -189,12 +187,13 @@ class MResponse(Message):
 
 class MNotify(Message):
     """Notify message
-    [<message id>, <message type>, <Message Body>[]]
+    [<message type>, <Method> , <Message params>[]]
     """
-    def __init__(self):
+
+    def __init__(self, method, params):
         super().__init__()
-        self.body = None
-        self._msgid = uuid4().int % Message._max_message_id
+        self.body = params
+        self.method = method
         self._type = 2
 
     def __eq__(self, other) -> bool:
