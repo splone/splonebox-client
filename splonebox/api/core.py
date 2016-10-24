@@ -19,17 +19,21 @@ see <http://www.gnu.org/licenses/>.
 import logging
 
 from splonebox.rpc.msgpackrpc import MsgpackRpc
-from splonebox.rpc.message import MResponse, MRequest, InvalidMessageError
-from splonebox.api.apicall import ApiRun, ApiResult
+from splonebox.rpc.message import MResponse, MRequest, MNotify
+from splonebox.rpc.message import InvalidMessageError
+from splonebox.api.apicall import ApiRun, ApiResult, ApiBroadcast
+from splonebox.api.apicall import ApiSubscribe, ApiUnsubscribe
 from splonebox.api.apicall import ApiRegister, InvalidApiCallError
-from splonebox.api.result import Result, RunResult, RegisterResult
+from splonebox.api.response import RunResult, Response
+from splonebox.api.subscription import Subscription
 
 
 class Core():
     def __init__(self):
         self._rpc = MsgpackRpc()
         self._rpc.register_function(self._handle_result, "result")
-        self._responses_pending = {int: Result()}
+        self._rpc.register_function(self._handle_broadcast, "broadcast")
+        self._responses_pending = {int: Response()}
         self._results_pending = {int: RunResult()}  # call_id: result
 
     def enable_debugging(self):
@@ -92,12 +96,12 @@ class Core():
 
     def send_register(self, call: ApiRegister):
         """Send a register API call to the server"""
-        result = RegisterResult()
-        self._responses_pending[call.msg.get_msgid()] = result
-        self._rpc.send(call.msg, self._handle_register_response)
-        return result
+        response = Response()
+        self._responses_pending[call.msg.get_msgid()] = response
+        self._rpc.send(call.msg, self._handle_response)
+        return response
 
-    def _handle_register_response(self, msg: MResponse):
+    def _handle_response(self, msg: MResponse):
         result = self._responses_pending.pop(msg.get_msgid())
         if msg.error is not None:
             result.set_error([msg.error[0], msg.error[1].decode('ascii')])
