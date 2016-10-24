@@ -19,7 +19,7 @@ see <http://www.gnu.org/licenses/>.
 
 import copy
 
-from splonebox.rpc.message import MRequest, InvalidMessageError
+from splonebox.rpc.message import MRequest, MNotify, InvalidMessageError
 
 
 class ApiCall:
@@ -213,6 +213,44 @@ class ApiResult(ApiCall):
 
     def get_result(self):
         return self.msg.arguments[1][0]
+
+
+class ApiBroadcast(ApiCall):
+    def __init__(self, event_name: str, args: [], as_notification=True):
+        super().init()
+
+        if not isinstance(event_name, str):
+            raise InvalidApiCallError("Event name has to be string")
+
+        # This is for simple "ping" notifications
+        if args is None:
+            args = []
+
+        if not isinstance(args, list):
+            raise InvalidApiCallError("Event args have to be list or None")
+
+        if as_notification:
+            self.msg = MNotify("broadcast", [event_name, args])
+        else:
+            self.msg.function = "broadcast"
+            self.msg.arguments = [event_name, args]
+
+
+class ApiSubscribe(ApiCall):
+    def __init__(self, event_name: str):
+        if not isinstance(event_name, str):
+            raise InvalidApiCallError("Event name has to be string")
+
+        self.msg.function = "subscribe"
+        self.msg.arguments = [event_name]
+
+
+class ApiUnsubscribe(ApiCall):
+    def __init__(self, event_name: str):
+        if not isinstance(event_name, str):
+            raise InvalidApiCallError("Event name has to be string")
+        self.msg.function = "unsubscribe"
+        self.msg.arguments = [event_name]
 
 
 class InvalidApiCallError(Exception):
