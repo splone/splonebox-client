@@ -22,8 +22,7 @@ import logging
 import msgpack
 
 from splonebox.rpc.connection import Connection
-from splonebox.rpc.message import Message, InvalidMessageError, MResponse, \
- MNotify
+from splonebox.rpc.message import Message, InvalidMessageError, MResponse
 
 
 class MsgpackRpc:
@@ -59,11 +58,16 @@ class MsgpackRpc:
         if not isinstance(msg, Message):
             raise InvalidMessageError("Unable to send None!")
 
+        if response_callback is not None:
+            if msg.get_msgid() is None:
+                raise InvalidMessageError(
+                    "Notify message does not support responses")
+
+            self._response_callbacks[msg.get_msgid()] = response_callback
+
         logging.info("sending: \n" + msg.__str__())
         self._connection.send_message(msg.pack())
 
-        if response_callback is not None:
-            self._response_callbacks[msg.get_msgid()] = response_callback
         # if response callback is None we don't expect a response
 
     def _message_callback(self, data: bytes):
@@ -86,11 +90,15 @@ class MsgpackRpc:
                 logging.info('Received this message: \n' + msg.__str__())
                 if msg.get_type() == 0:
                     # type == 0  => Message is request
-                    self._dispatcher[msg.function](msg)
+                    error, response = self._dispatcher[msg.function](msg)
+                    rsp = MResponse(msg.get_msgid())
+                    rsp.error = error
+                    rsp.response = response
+                    self.send(msg)
                 elif msg.get_type() == 1:
                     self._handle_response(msg)
                 elif msg.get_type() == 2:
-                    self._handle_notify(msg)
+                    self._dispatcher[msg.function](msg)
 
             except InvalidMessageError as e:
                 logging.info(e.name)
@@ -108,21 +116,14 @@ class MsgpackRpc:
                 m.error = [418, "Unexpected exception occurred!"]
                 self.send(m)
 
-    def register_function(self, func, name: str):
+    def register_function(self, foo, name: str):
         """Register a function at msgpack rpc dispatcher
 
         :param name: Name of the function
         :param foo: A function reference
         :raises DispatcherError
         """
-        self._dispatcher[name] = func
-
-    def register_notification_handler(self, func):
-        """Register a Function that handles Notification messages
-
-        :param func: A function that takes a single MNotify message as argument
-        """
-        self._notification_handler = func
+        self._dispatcher[name] = foo
 
     def disconnect(self):
         """Disconnect from server"""
@@ -149,12 +150,3 @@ class MsgpackRpc:
                     "The msgid in given response does not match any request!\n")
 
             raise
-
-    def _handle_notify(self, msg):
-        if self.notification_handler is None:
-            m = MResponse(msg.get_msgid())
-            m.error = [400, "Unable to handle Notification message"]
-            self.send(m)
-            return
-        
-        self.notification_handler(msg)

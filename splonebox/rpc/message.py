@@ -192,8 +192,8 @@ class MNotify(Message):
 
     def __init__(self, method, params):
         super().__init__()
-        self.body = params
-        self.method = method
+        self.arguments = params
+        self.function = method
         self._type = 2
 
     def __eq__(self, other) -> bool:

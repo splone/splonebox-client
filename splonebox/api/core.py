@@ -111,32 +111,15 @@ class Core():
         try:
             result_call = ApiResult.from_msgpack_request(msg)
         except (InvalidApiCallError, InvalidMessageError):
-            self.send_error_response(msg.get_msgid(), 400,
-                                     "Message is not a valid result call")
-            return
+            return ([400, "Message is not a valid result call"], None)
         try:
             self._results_pending[result_call.get_call_id()].set_result(
                 result_call.get_result())
             # TODO: error handling
-            self.send_success_response(msg.get_msgid(),
-                                       [result_call.get_call_id()])
+            return (None, [result_call.get_call_id()])
             # self._results_pending.pop(result_call.get_call_id())
         except KeyError:
-            self.send_error_response(msg.get_msgid(), 404,
-                                     "Call id does not match any call")
-
-    def send_error_response(self, msgid: int,
-                            error_code: int, error_string: str):
-        msg = MResponse(msgid)
-        msg.error = [error_code, error_string]
-        msg.response = None
-        self._rpc.send(msg)
-
-    def send_success_response(self, msgid: int,  response: []):
-        msg = MResponse(msgid)
-        msg.error = None
-        msg.response = response
-        self._rpc.send(msg)
+            return ([404, "Call id does not match any call"], None)
 
 
 class CoreError(Exception):
