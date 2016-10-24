@@ -80,9 +80,9 @@ class MsgpackRpc:
         for unpacked in self._unpacker:
             try:
                 messages.append(Message.from_unpacked(unpacked))
-            except InvalidMessageError:
+            except InvalidMessageError as e:
                 m = MResponse(0)
-                m.error = [400, "Invalid Message Format"]
+                m.error = [400, "Invalid Message Format" + e.__str__()]
                 self.send(m)
 
         for msg in messages:
@@ -98,7 +98,7 @@ class MsgpackRpc:
                 elif msg.get_type() == 1:
                     self._handle_response(msg)
                 elif msg.get_type() == 2:
-                    self._dispatcher[msg.function](msg)
+                    self._dispatcher["broadcast"](msg)
 
             except InvalidMessageError as e:
                 logging.info(e.name)

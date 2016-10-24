@@ -217,7 +217,7 @@ class ApiResult(ApiCall):
 
 class ApiBroadcast(ApiCall):
     def __init__(self, event_name: str, args: [], as_notification=True):
-        super().init()
+        super().__init__()
 
         if not isinstance(event_name, str):
             raise InvalidApiCallError("Event name has to be string")
@@ -238,6 +238,7 @@ class ApiBroadcast(ApiCall):
 
 class ApiSubscribe(ApiCall):
     def __init__(self, event_name: str):
+        super().__init__()
         if not isinstance(event_name, str):
             raise InvalidApiCallError("Event name has to be string")
 
@@ -247,6 +248,7 @@ class ApiSubscribe(ApiCall):
 
 class ApiUnsubscribe(ApiCall):
     def __init__(self, event_name: str):
+        super().__init__()
         if not isinstance(event_name, str):
             raise InvalidApiCallError("Event name has to be string")
         self.msg.function = "unsubscribe"

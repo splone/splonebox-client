@@ -70,15 +70,16 @@ class Message:
         if not isinstance(unpacked[0], int) or unpacked[0] not in (0, 1, 2):
             raise InvalidMessageError("Invalid type")
 
-        if not isinstance(unpacked[1], int) or unpacked[1] < 0 or unpacked[
-                1] > Message._max_message_id:
-            raise InvalidMessageError("Invalid Message Id")
-
         t = unpacked[0]
 
         if t == 0:
+            if not isinstance(unpacked[1], int) or (
+                    unpacked[1] < 0 or unpacked[1] > Message._max_message_id):
+                raise InvalidMessageError("Invalid Message Id")
+
             if not isinstance(unpacked[2], bytes):
                 raise InvalidMessageError("Invalid method")
+
             if not isinstance(unpacked[3], list):
                 raise InvalidMessageError("Invalid body")
 
@@ -89,10 +90,16 @@ class Message:
             return msg
 
         elif t == 1:
+            if not isinstance(unpacked[1], int) or (
+                    unpacked[1] < 0 or unpacked[1] > Message._max_message_id):
+                raise InvalidMessageError("Invalid Message Id")
+
             if unpacked[2] is None and unpacked[3] is None:
                 raise InvalidMessageError("error and result are both None")
+
             if not isinstance(unpacked[2], (list, type(None))):
                 raise InvalidMessageError("Invalid Error")
+
             if not isinstance(unpacked[3], (list, type(None))):
                 raise InvalidMessageError("Invalid Result")
 
@@ -200,19 +207,23 @@ class MNotify(Message):
         return self._msgid == other.get_msgid() and self.body == other.body
 
     def __str__(self) -> str:
-        return str([self._type, self._msgid, self.body])
+        return str([self._type, self.function, self.arguments])
 
     def pack(self) -> bytes:
         """Packs the notification using :msgpack
 
         :return: message, serialized using msgpack
         """
-        if not isinstance(self.body, list):
+        if not isinstance(self.function, str):
+            raise InvalidMessageError("Unable to pack Notification message:\n"
+                                      + self.__str__())
+
+        if not isinstance(self.arguments, list):
             raise InvalidMessageError("Unable to pack Notification message:\n"
                                       + self.__str__())
         else:
             return msgpack.packb(
-                [self._type, self._msgid, self.body],
+                [self._type, self.function, self.arguments],
                 use_bin_type=True)
 
 

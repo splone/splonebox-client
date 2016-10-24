@@ -24,7 +24,8 @@ from splonebox.rpc.message import InvalidMessageError
 from splonebox.api.apicall import ApiRun, ApiResult, ApiBroadcast
 from splonebox.api.apicall import ApiSubscribe, ApiUnsubscribe
 from splonebox.api.apicall import ApiRegister, InvalidApiCallError
-from splonebox.api.response import RunResult, Response
+from splonebox.api.response import Response
+from splonebox.api.result import RunResult
 from splonebox.api.subscription import Subscription
 
 
@@ -35,7 +36,7 @@ class Core():
         self._rpc.register_function(self._handle_broadcast, "broadcast")
         self._responses_pending = {int: Response()}
         self._results_pending = {int: RunResult()}  # call_id: result
-        self._subscriptions = {str: Subscription()}
+        self._subscriptions = {}
 
     def enable_debugging(self):
         logging.basicConfig(level=logging.INFO)
@@ -144,8 +145,8 @@ class Core():
         call = ApiSubscribe(event_name)
         response = Response()
         self._responses_pending[call.msg.get_msgid()] = response
-        self._rpc.send(call.msg, response=self._handle_response)
-        return response
+        self._rpc.send(call.msg, response_callback=self._handle_response)
+        response.await()
         return sub
 
     def unsubscribe(self, event_name: str):
@@ -156,18 +157,19 @@ class Core():
         response = Response()
         self._responses_pending[call.msg.get_msgid()] = response
         #  TODO: subscirbe callback
-        self._rpc.send(call.msg, response=self._handle_response)
+        self._rpc.send(call.msg, response_callback=self._handle_response)
         return response
 
     def _handle_broadcast(self, msg: MNotify):
-        if not msg.get_type == 2:
+        if not msg.get_type() == 2:
             #  TODO: make sure request/notify handling doesn't
             #  get confused in other functions as well!
             logging.warning("Broadcast handler received a Request ")
             return
         try:
-            subs = self._subscriptions[msg.arguments[0]]
-            subs.signal(msg.arguments[1])
+            subs = self._subscriptions[msg.function]
+            subs.signal(msg.arguments)
+            logging.info("received event: " + msg.arguments.__str__())
         except KeyError:
             logging.warning("Received an event that we haven't subscribed to")
             return
