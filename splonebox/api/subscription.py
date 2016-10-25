@@ -16,22 +16,17 @@ along with this splonebox python client library.  If not,
 see <http://www.gnu.org/licenses/>.
 
 """
-from threading import Event
+from queue import Queue
 
 
 class Subscription():
     #  TODO: Proper handling for multiprocessing etc..
     def __init__(self, name: str):
         self.name = name
-        self._event = Event()
-        self._val = []
+        self._evt_queue = Queue()
 
     def wait(self, timeout=None):
-        #  TODO: Think of some fancy synchro stuff
-        self._event.wait(timeout)
-        return self._val
+        return self._evt_queue.get(timeout=timeout)
 
     def signal(self, val: []):
-        self._val.append(val)
-        self._event.set()
-        self._event.clear()
+        self._evt_queue.put(val)
