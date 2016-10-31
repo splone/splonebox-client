@@ -22,6 +22,7 @@ from splonebox.api.core import Core
 
 import logging
 
+
 class RemotePlugin:
 
     def __init__(self,

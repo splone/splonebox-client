@@ -34,11 +34,7 @@ class Plugin:
         :param desc: Description of the plugin
         :param author: Author of the plugin
         :param licence: License of the plugin
-        :param debug: If true more information will be printed to the output
-        :param serverlongtermpk: The server's longterm key
-        (if set, path is ignored!)
-        :param serverlongtermpk_path: path to file containing the
-        server's longterm key
+        :param core: Core instance
         """
         # [<name>, <description>, <author>, <license>]
         self._metadata = [name, desc, author, licence]
@@ -67,8 +63,8 @@ class Plugin:
         self.function_meta[f.__name__] = [f.__doc__, f.args]
 
     def register(self, blocking=True):
-        """Registers the Plugin and all annotated functions @ the core.
-        This call is blocking
+        """Registers the Plugin @ the core.
+        This call is blocking by default
 
         :raises :InvalidApiCallError if something is wrong with the metadata
         or functions
@@ -91,7 +87,6 @@ class Plugin:
 
         :param msg: Message containing run Request (MRequest)
         """
-        # TODO: Verify call id!?
 
         try:
             call = ApiRun.from_msgpack_request(msg)
@@ -113,9 +108,8 @@ class Plugin:
             # store active process
             self._active_threads[msg.arguments[0][1]] = t
 
-        except ThreadError:
-            # Error handling on API -level
-            pass
+        except ThreadError as e:
+            return [420, "Thread error:"+e.__str__()]
 
         return None, [msg.arguments[0][1]]
 
@@ -126,7 +120,6 @@ class Plugin:
                 return
 
             result_call = ApiResult(call_id, result)
-
             self.core.send_result(result_call)
 
             # TODO: Error handling on API-level (not discussed yet -

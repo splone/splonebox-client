@@ -63,15 +63,14 @@ class Response():
         """
         self._event.wait()
         if self._error is not None:
-            logging.warning("Register call failed!\n" + self._error[0].__str__(
-            ) + " : " + self._error[1])
+            logging.warning("Call failed!\n" + self._error[0].__str__() +
+                            " : " + self._error[1])
             raise RemoteError(self._error[0], self._error[1])
 
     def success(self):
-        """Signal successful register call
+        """Signal successful call
 
-        This will be called by  :Plugin as soon as
-        a valid response has been received
+        This will is called when a valid response has been received
         """
         self.fin_ts = datetime.datetime.now().strftime("%I:%M%p on %B %d, %Y")
         self._event.set()
@@ -83,4 +82,4 @@ class RemoteError(Exception):
         self.name = name
 
     def __str__(self) -> str:
-        return "Error " + self.errno + ": " + self.name
+        return "Error " + self.errno.__str__() + ": " + self.name

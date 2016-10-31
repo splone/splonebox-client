@@ -61,11 +61,6 @@ class Core():
         self._rpc.register_function(function, "run")
 
     def send_run(self, call: ApiRun):
-        """Sends a message to the server
-        :param msg Request or response
-        :param callback None if msg is a Response.
-        Callback for a response if msg is a request
-        """
         result = RunResult()
         self._responses_pending[call.msg.get_msgid()] = result
         self._rpc.send(call.msg, self._handle_run_response)
@@ -87,7 +82,6 @@ class Core():
 
     def send_result(self, call: ApiResult):
         """Send a result API call to the server"""
-        logging.info("Sending result: " + call.msg.__str__())
         self._rpc.send(call.msg,
                        response_callback=self._handle_result_response)
 
@@ -162,8 +156,6 @@ class Core():
 
     def _handle_broadcast(self, msg: MNotify):
         if not msg.get_type() == 2:
-            #  TODO: make sure request/notify handling doesn't
-            #  get confused in other functions as well!
             logging.warning("Broadcast handler received a Request ")
             return
         try:
