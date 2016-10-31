@@ -93,7 +93,7 @@ class MsgpackRpc:
                     rsp = MResponse(msg.get_msgid())
                     rsp.error = error
                     rsp.response = response
-                    self.send(msg)
+                    self.send(rsp)
                 elif msg.get_type() == 1:
                     self._handle_response(msg)
                 elif msg.get_type() == 2:
