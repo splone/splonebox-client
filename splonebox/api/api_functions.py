@@ -42,7 +42,7 @@ def _handler(signal, handler):
 signal.signal(signal.SIGINT, _handler)
 
 
-def enaable_debugging():
+def enable_debugging():
     global __core
     if __core is None:
         raise CoreError("Core not inited - You need to call connect(..) first")
