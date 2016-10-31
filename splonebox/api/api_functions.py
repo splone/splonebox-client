@@ -32,20 +32,20 @@ __core = None
 __plugin = None
 
 
-def __handler(signal, handler):
+def _handler(signal, handler):
     global __core
     logging.warning("CTRL-C was pressed.. Shutting down")
     if __core is not None:
         __core.disconnect()
     sys.exit(0)
 
-signal.signal(signal.SIGINT, __handler)
+signal.signal(signal.SIGINT, _handler)
 
 
 def enaable_debugging():
     global __core
     if __core is None:
-        raise CoreError("Core inited - You need to call connect(..) first")
+        raise CoreError("Core not inited - You need to call connect(..) first")
 
     __core.enable_debugging()
 
@@ -59,7 +59,7 @@ def connect(addr: str, port: int):
 def disconnect():
     global __core, __plugin
     if __core is None:
-        raise CoreError("Core inited - You need to call connect(..) first")
+        raise CoreError("Core not inited - You need to call connect(..) first")
     __core.disconnect()
     __core = None
     __plugin = None
@@ -68,7 +68,7 @@ def disconnect():
 def register(name: str, desc: str, author: str, licence: str):
     global __core, __plugin
     if __core is None:
-        raise CoreError("Core inited - You need to call connect(..) first")
+        raise CoreError("Core not inited - You need to call connect(..) first")
 
     __plugin = Plugin(name, desc, author, licence, __core)
     __plugin.register()
@@ -77,14 +77,14 @@ def register(name: str, desc: str, author: str, licence: str):
 def broadcast(event_name: str, args: []):
     global __core
     if __core is None:
-        raise CoreError("Core inited - You need to call connect(..) first")
+        raise CoreError("Core not inited - You need to call connect(..) first")
     __core.broadcast(event_name, args)
 
 
 def subscribe(event_name: str) -> Subscription:
     global __core
     if __core is None:
-        raise CoreError("Core inited - You need to call connect(..) first")
+        raise CoreError("Core not inited - You need to call connect(..) first")
 
     return __core.subscribe(event_name)
 
@@ -92,7 +92,7 @@ def subscribe(event_name: str) -> Subscription:
 def unsubscribe(event_name: str, blocking=True):
     global __core
     if __core is None:
-        raise CoreError("Core inited - You need to call connect(..) first")
+        raise CoreError("Core not inited - You need to call connect(..) first")
 
     rsp = __core.unsubscribe(event_name)
     rsp.await()
@@ -101,7 +101,7 @@ def unsubscribe(event_name: str, blocking=True):
 def send_run(plugin_id: str, function_name: str, args: []) -> RunResult:
     global __core
     if __core is None:
-        raise CoreError("Core inited - You need to call connect(..) first")
+        raise CoreError("Core not inited - You need to call connect(..) first")
 
     call = ApiRun(plugin_id, function_name, args)
     return __core.send_run(call)
