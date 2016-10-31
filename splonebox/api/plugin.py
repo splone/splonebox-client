@@ -117,7 +117,7 @@ class Plugin:
             # Error handling on API -level
             pass
 
-        return None, [msg.get_msgid(), [msg.arguments[0][1]]]
+        return None, [msg.arguments[0][1]]
 
     def _execute_function(self, fun, args, call_id):
         try:
