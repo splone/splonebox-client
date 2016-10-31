@@ -96,21 +96,14 @@ class Plugin:
         try:
             call = ApiRun.from_msgpack_request(msg)
         except InvalidMessageError:
-            self.core.send_error_response(msg.get_msgid(), 400,
-                                          "Message is not a valid run call")
-            return
+            return [400, "Message is not a valid run call"], None
 
         try:
             fun = self.functions[call.get_method_name()]
         except KeyError:
-            self.core.send_error_response(msg.get_msgid(), 404,
-                                          "Function does not exist!")
-            return
+            return [404, "Function does not exist!"], None
 
-        # Send execution validation
-        self.core.send_success_response(msg.get_msgid(), [msg.arguments[0][1]])
-
-        # start new thread for call. Implement stop API call
+        # start new thread for call. TODO: Implement stop API call
         try:
             t = Thread(target=self._execute_function,
                        args=(fun,
@@ -123,6 +116,8 @@ class Plugin:
         except ThreadError:
             # Error handling on API -level
             pass
+
+        return None, [msg.get_msgid(), [msg.arguments[0][1]]]
 
     def _execute_function(self, fun, args, call_id):
         try:
