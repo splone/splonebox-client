@@ -32,7 +32,6 @@ class MsgpackRpc:
         self._dispatcher = {}
         self._response_callbacks = {}
         self._unpacker = msgpack.Unpacker()
-        self._notification_handler = None
 
     def connect(self, host: str, port: int):
         """Connect to given host
@@ -148,5 +147,4 @@ class MsgpackRpc:
             else:
                 logging.warning(
                     "The msgid in given response does not match any request!\n")
-
             raise
