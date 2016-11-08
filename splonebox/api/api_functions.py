@@ -43,12 +43,7 @@ signal.signal(signal.SIGINT, _handler)
 
 
 def enable_debugging():
-    global __core
-    if __core is None:
-        raise CoreError("Core not inited - You need to call connect(..) first")
-
-    __core.enable_debugging()
-
+    logging.basicConfig(level=logging.INFO)
 
 def connect(addr: str, port: int):
     global __core
