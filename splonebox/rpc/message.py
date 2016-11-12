@@ -204,7 +204,9 @@ class MNotify(Message):
         self._type = 2
 
     def __eq__(self, other) -> bool:
-        return self._msgid == other.get_msgid() and self.body == other.body
+        return (self._msgid == other.get_msgid() and
+                self.arguments == other.arguments and
+                self.function == other.function)
 
     def __str__(self) -> str:
         return str([self._type, self.function, self.arguments])

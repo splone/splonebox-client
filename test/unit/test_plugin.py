@@ -68,29 +68,36 @@ class PluginTest(unittest.TestCase):
         msg.function = "run"
         msg.arguments = [[None, 123], b'foo', [1, 1.1, "hi"]]
 
-        plug._handle_run(msg)
+        error, response = plug._handle_run(msg)
         self.assertIsNotNone(plug._active_threads.get(123))
 
         plug._active_threads.pop(123).join()
         mock.assert_called_with([1, 1.1, "hi"])
-        # request was valid -> 1x response + 1x result)
-        self.assertEqual(send.call_count, 2)
-        self.assertEqual(send.call_args_list[1][0][0].arguments[0][0], 123)
-        self.assertEqual(send.call_args_list[1][0][0].arguments[1][0],
+        # request was valid  + 1x result
+        self.assertEqual(send.call_count, 1)
+        self.assertEqual(send.call_args_list[0][0][0].arguments[0][0], 123)
+        self.assertEqual(send.call_args_list[0][0][0].arguments[1][0],
                          "return")
+
+        # (response is sent by msgpack-rpc handler)
+        self.assertEqual(response, [123])
+        self.assertIsNone(error)
 
         send.reset_mock()  # reset call count
         msg.arguments = [[None, 123], b'mock', [1, 1.1, "hi"]]
-        plug._handle_run(msg)
-        # request was invalid -> 1x error response )
-        self.assertEqual(send.call_count, 1)
+        error, response = plug._handle_run(msg)
+        # request was invalid -> error response
+        self.assertEqual(error, [404, "Function does not exist!"])
+        self.assertIsNone(response)
         with self.assertRaises(KeyError):
             plug._active_threads[123]
 
         send.reset_mock()  # reset call count
         msg.arguments = [None, b'mock', [1, 1.1, "hi"]]
-        plug._handle_run(msg)
-        # request was invalid -> 1x error response )
-        self.assertEqual(send.call_count, 1)
+        error, response = plug._handle_run(msg)
+        # request was invalid -> error response
+        self.assertEqual(error, [400, "Message is not a valid run call"])
+        self.assertIsNone(response)
+
         with self.assertRaises(KeyError):
             plug._active_threads[123]

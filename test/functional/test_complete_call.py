@@ -25,6 +25,8 @@ from splonebox.api.remoteplugin import RemotePlugin
 from splonebox.api.core import Core
 from splonebox.api.remotefunction import RemoteFunction
 from splonebox.rpc.message import MRequest, MResponse
+
+from threading import Lock
 from test import mocks
 
 
@@ -35,9 +37,14 @@ class CompleteCall(unittest.TestCase):
 
     def test_complete_run(self):
         # In this test a plugin is created and is calling itself.
+        # The called_lock is used to ensure that we receive
+        # the response before the result
+        called_lock = Lock()
+        called_lock.acquire()
 
         def add(a: ctypes.c_int64, b: ctypes.c_int64):
             "add two ints"
+            called_lock.acquire()
             return a + b
 
         RemoteFunction(add)
@@ -56,21 +63,22 @@ class CompleteCall(unittest.TestCase):
         msg.arguments[0][1] = 123  # set call id
         core._rpc._message_callback(msg.pack())
 
-        # wait for execution to finish
-        plug._active_threads[123].join()
-
         # receive response
         data = mock_send.call_args_list[1][0][0]
         core._rpc._message_callback(data)
-        self.assertEqual(result._error, None)
-        self.assertEqual(result.get_status(), 1)
-        self.assertEqual(result.get_id(), 123)
 
-        # receive result request
-        # data = mock_send.call_args_list[2][0][0]
-        # plug._rpc._message_callback(data)
-        # self.assertEqual(result.get_status(), 2)
-        # self.assertEqual(result.get_result(blocking=False), [15])
+        # start execution
+        called_lock.release()
+        # wait for execution to finish
+        plug._active_threads[123].join()
+        # receive result
+        data = mock_send.call_args_list[2][0][0]
+        core._rpc._message_callback(data)
+
+        self.assertEqual(result.get_result(blocking=True), 15)
+        self.assertEqual(result.get_status(), 2)
+        self.assertEqual(result._error, None)
+        self.assertEqual(result.get_id(), 123)
 
     def test_complete_register(self):
         def fun():

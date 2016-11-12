@@ -24,23 +24,11 @@ from splonebox.api.apicall import ApiRun
 from splonebox.api.subscription import Subscription
 
 import signal
-import sys
 import logging
 
 
 __core = None
 __plugin = None
-
-
-def _handler(signal, handler):
-    global __core
-    logging.warning("CTRL-C was pressed.. Shutting down")
-    if __core is not None:
-        __core.disconnect()
-    sys.exit(0)
-
-signal.signal(signal.SIGINT, _handler)
-
 
 def enable_debugging():
     logging.basicConfig(level=logging.INFO)

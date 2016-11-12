@@ -22,7 +22,7 @@ import logging
 import msgpack
 
 from splonebox.rpc.connection import Connection
-from splonebox.rpc.message import Message, InvalidMessageError, MResponse
+from splonebox.rpc.message import Message, InvalidMessageError, MResponse, MNotify
 
 
 class MsgpackRpc:
@@ -97,11 +97,13 @@ class MsgpackRpc:
                 elif msg.get_type() == 1:
                     self._handle_response(msg)
                 elif msg.get_type() == 2:
-                    self._dispatcher["broadcast"](msg)
+                    self._handle_notify(msg)
 
             except InvalidMessageError as e:
                 logging.info(e.name)
                 logging.info("\n Unable to handle Message\n")
+                if msg.get_type() != 0:
+                    return
 
                 m = MResponse(msg.get_msgid())
                 m.error = [400, "Could not handle request! " + e.name]
@@ -110,7 +112,8 @@ class MsgpackRpc:
             except Exception as e:
                 logging.warning("Unexpected exception occurred!")
                 logging.warning(e.__str__())
-
+                if msg.get_type() != 0:
+                    return
                 m = MResponse(msg.get_msgid())
                 m.error = [418, "Unexpected exception occurred!"]
                 self.send(m)
@@ -148,3 +151,6 @@ class MsgpackRpc:
                 logging.warning(
                     "The msgid in given response does not match any request!\n")
             raise
+
+    def _handle_notify(self, msg: MNotify):
+        self._dispatcher["broadcast"](msg)

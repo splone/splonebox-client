@@ -60,11 +60,13 @@ class MsgpackRpcTest(unittest.TestCase):
     # noinspection PyProtectedMember
     def test_message_callback(self):
         rpc = MsgpackRpc()
+        mock_send = mocks.rpc_send(rpc)
 
         dispatch = mocks.rpc_dispatch(rpc, "run")
         m_req = MRequest()
         m_req.function = "run"
         m_req.arguments = []
+        dispatch.return_value = (None, [])
 
         rpc._message_callback(m_req.pack())
         dispatch.assert_called_once_with(m_req)
@@ -76,8 +78,7 @@ class MsgpackRpcTest(unittest.TestCase):
         handle_response.assert_called_once_with(m_res)
 
         handle_notify = mocks.rpc_handle_notify(rpc)
-        m_not = MNotify()
-        m_not.body = []
+        m_not = MNotify("test", [])
         rpc._message_callback(m_not.pack())
         handle_notify.assert_called_once_with(m_not)
 
@@ -85,32 +86,17 @@ class MsgpackRpcTest(unittest.TestCase):
         handle_response.side_effect = InvalidMessageError("res")
         dispatch.side_effect = InvalidMessageError("req")
 
-        mock_send = mocks.rpc_send(rpc)
-
-        rpc._message_callback(m_not.pack())
-        self.assertEqual(mock_send.call_args[0][0].error[1],
-                         "Could not handle request! not")
-
-        handle_notify.side_effect = TypeError()
-        rpc._message_callback(m_not.pack())
-        self.assertEqual(mock_send.call_args[0][0].error[1],
-                         "Unexpected exception occurred!")
-
-        rpc._message_callback(m_res.pack())
-        self.assertEqual(mock_send.call_args[0][0].error[1],
-                         "Could not handle request! res")
-
         rpc._message_callback(m_req.pack())
         self.assertEqual(mock_send.call_args[0][0].error[1],
                          "Could not handle request! req")
 
         rpc._message_callback(msgpack.packb(["hi"]))
-        self.assertEqual(mock_send.call_args[0][0].error[1],
-                         "Invalid Message Format")
+        self.assertEqual(mock_send.call_args[0][0].error[0],
+                         400)
 
         # handle unexpected exception
-        handle_notify.side_effect = TypeError()
-        rpc._message_callback(m_not.pack())
+        dispatch.side_effect = TypeError()
+        rpc._message_callback(m_req.pack())
         self.assertEqual(mock_send.call_args[0][0].error[1],
                          "Unexpected exception occurred!")
 

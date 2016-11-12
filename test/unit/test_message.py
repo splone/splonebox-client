@@ -24,6 +24,7 @@ import msgpack
 from splonebox.rpc.message import MRequest, Message, MResponse, MNotify, \
  InvalidMessageError
 
+
 class MessageTest(unittest.TestCase):
     def test_unpack(self):
         msg_request = [0, 1, b'run', [b'hi']]
@@ -40,11 +41,11 @@ class MessageTest(unittest.TestCase):
         self.assertEqual(unpacked.error, ['err'])
         self.assertEqual(unpacked.response, ['res'])
 
-        msg_notify = [2, 1, ['hi']]
+        msg_notify = [2, b'Testfunction', ['hi']]
         unpacked = Message.from_unpacked(msg_notify)
         self.assertEqual(unpacked._type, 2)
-        self.assertEqual(unpacked.get_msgid(), 1)
-        self.assertEqual(unpacked.body, ['hi'])
+        self.assertEqual(unpacked.function, 'Testfunction')
+        self.assertEqual(unpacked.arguments, ['hi'])
 
         with self.assertRaises(InvalidMessageError):
             Message.from_unpacked([])
@@ -86,7 +87,11 @@ class MessageTest(unittest.TestCase):
             Message.from_unpacked([1, 1, [], ""])
 
         with self.assertRaises(InvalidMessageError):
-            Message.from_unpacked([1, 1, ""])
+            Message.from_unpacked([1, "notBytes", [123]])
+
+        with self.assertRaises(InvalidMessageError):
+            Message.from_unpacked([1, b'test', "notalist"])
+
 
     def test_MRequest(self):
         msg = MRequest()
@@ -130,11 +135,15 @@ class MessageTest(unittest.TestCase):
             msg.error = None
             msg.pack()
 
+
     def test_MNotify(self):
-        msg = MNotify()
-        msg.body = []
-        self.assertEqual(msg.pack(), msgpack.packb([2, msg._msgid, []]))
+        msg = MNotify("test", [123])
+        self.assertEqual(msg.pack(), msgpack.packb([2, "test", [123]]))
 
         with self.assertRaises(InvalidMessageError):
-            msg.body = ""
+            msg = MNotify(123, [123])
+            msg.pack()
+
+        with self.assertRaises(InvalidMessageError):
+            msg = MNotify("test", 123)
             msg.pack()
