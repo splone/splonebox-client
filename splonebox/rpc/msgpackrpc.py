@@ -75,6 +75,7 @@ class MsgpackRpc:
         :param data: Msgpack serialized message
         """
         self._unpacker.feed(data)
+
         messages = []
         for unpacked in self._unpacker:
             try:
@@ -83,6 +84,11 @@ class MsgpackRpc:
                 m = MResponse(0)
                 m.error = [400, "Invalid Message Format" + e.__str__()]
                 self.send(m)
+
+        if len(messages) == 0:
+            logging.info("Received incomplete message from Server: \n" +
+                         str(data))
+            return
 
         for msg in messages:
             try:
