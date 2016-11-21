@@ -203,8 +203,9 @@ class Crypto:
                    This compressed nonce is implicitly prefixed by
                    "splonebox-server" to form a 24-byte nonce.
         * 24 bytes: a cryptographic box encrypted and authenticated to the
-                    client's short-term public key C' from the server's short-term public
-                    key S' using this 24-byte nonce. The M-byte plaintext inside the box has
+                    client's short-term public key C' from the server's
+                    short-term public key S' using this 24-byte nonce.
+                    The M-byte plaintext inside the box has
                     the following contents:
             * 8 bytes: length
         * n bytes: a cryptographic box encrypted and authenticated to the
@@ -212,6 +213,10 @@ class Crypto:
                     short-term public key S' using this 24-byte nonce. The
                     plaintext inside the box has the following contents:
             * m bytes: data
+
+        NOTE: This function NOT thread safe.
+              The nonce needs to be updated for every individual message
+              AFTER it was sent.
 
         :return: client message packet
         :raises: :CryptError on failure
