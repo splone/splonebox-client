@@ -17,7 +17,6 @@ see <http://www.gnu.org/licenses/>.
 
 """
 
-
 from uuid import uuid4
 import msgpack
 
@@ -28,7 +27,7 @@ class Message:
     https://github.com/msgpack-rpc/msgpack-rpc/blob/master/spec.md
     """
 
-    _max_message_id = pow(2, 32)-1
+    _max_message_id = pow(2, 32) - 1
 
     def __init__(self):
         self._type = None
@@ -71,15 +70,16 @@ class Message:
         if not isinstance(unpacked[0], int) or unpacked[0] not in (0, 1, 2):
             raise InvalidMessageError("Invalid type")
 
-        if not isinstance(unpacked[1], int) or unpacked[1] < 0 or unpacked[
-                1] > Message._max_message_id:
-            raise InvalidMessageError("Invalid Message Id")
-
         t = unpacked[0]
 
         if t == 0:
+            if not isinstance(unpacked[1], int) or (
+                    unpacked[1] < 0 or unpacked[1] > Message._max_message_id):
+                raise InvalidMessageError("Invalid Message Id")
+
             if not isinstance(unpacked[2], bytes):
                 raise InvalidMessageError("Invalid method")
+
             if not isinstance(unpacked[3], list):
                 raise InvalidMessageError("Invalid body")
 
@@ -90,10 +90,16 @@ class Message:
             return msg
 
         elif t == 1:
+            if not isinstance(unpacked[1], int) or (
+                    unpacked[1] < 0 or unpacked[1] > Message._max_message_id):
+                raise InvalidMessageError("Invalid Message Id")
+
             if unpacked[2] is None and unpacked[3] is None:
                 raise InvalidMessageError("error and result are both None")
+
             if not isinstance(unpacked[2], (list, type(None))):
                 raise InvalidMessageError("Invalid Error")
+
             if not isinstance(unpacked[3], (list, type(None))):
                 raise InvalidMessageError("Invalid Result")
 
@@ -103,12 +109,11 @@ class Message:
             return msg
 
         elif t == 2:
+            if not isinstance(unpacked[1], bytes):
+                raise InvalidMessageError("Invalid method")
             if not isinstance(unpacked[2], list):
                 raise InvalidMessageError("Notification body is invalid")
-            msg = MNotify()
-            msg._msgid = unpacked[1]
-            msg.body = unpacked[2]
-            return msg
+            return MNotify(unpacked[1].decode('ascii'), unpacked[2])
 
 
 class MRequest(Message):
@@ -189,31 +194,38 @@ class MResponse(Message):
 
 class MNotify(Message):
     """Notify message
-    [<message id>, <message type>, <Message Body>[]]
+    [<message type>, <Method> , <Message params>[]]
     """
-    def __init__(self):
+
+    def __init__(self, method, params):
         super().__init__()
-        self.body = None
-        self._msgid = uuid4().int % Message._max_message_id
+        self.arguments = params
+        self.function = method
         self._type = 2
 
     def __eq__(self, other) -> bool:
-        return self._msgid == other.get_msgid() and self.body == other.body
+        return (self._msgid == other.get_msgid() and
+                self.arguments == other.arguments and
+                self.function == other.function)
 
     def __str__(self) -> str:
-        return str([self._type, self._msgid, self.body])
+        return str([self._type, self.function, self.arguments])
 
     def pack(self) -> bytes:
         """Packs the notification using :msgpack
 
         :return: message, serialized using msgpack
         """
-        if not isinstance(self.body, list):
+        if not isinstance(self.function, str):
+            raise InvalidMessageError("Unable to pack Notification message:\n"
+                                      + self.__str__())
+
+        if not isinstance(self.arguments, list):
             raise InvalidMessageError("Unable to pack Notification message:\n"
                                       + self.__str__())
         else:
             return msgpack.packb(
-                [self._type, self._msgid, self.body],
+                [self._type, self.function, self.arguments],
                 use_bin_type=True)
 
 

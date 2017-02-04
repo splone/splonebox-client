@@ -36,6 +36,7 @@ class Connection:
         self._disconnected = threading.Event()
         self._disconnected.set()
         self.crypto_context = Crypto.by_path()
+        self.crypto_lock = threading.Lock()
 
     def connect(self,
                 hostname: str,
@@ -132,8 +133,9 @@ class Connection:
 
         self.crypto_context.crypto_established.wait()
 
-        boxed = self.crypto_context.crypto_write(msg)
-        self._socket.sendall(boxed)
+        with self.crypto_lock:
+            boxed = self.crypto_context.crypto_write(msg)
+            self._socket.sendall(boxed)
 
     def _listen(self, msg_callback):
         """Listens for incoming messages.
@@ -146,9 +148,11 @@ class Connection:
                 data = self._socket.recv(self._buffer_size)
 
                 if data == b'':
+                    if self._disconnected.is_set():
+                        break  # Connection was closed by user
                     self._disconnected.set()
                     logging.warning("Connection was closed by the server!")
-                    break
+                    return
             except:
                 if not self._disconnected.is_set():
                     self._disconnected.set()

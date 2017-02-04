@@ -24,11 +24,17 @@ import msgpack
 from unittest.mock import Mock
 
 from splonebox.api.plugin import Plugin
+from splonebox.api.remoteplugin import RemotePlugin
+from splonebox.api.core import Core
 from splonebox.api.remotefunction import RemoteFunction
 from test import mocks
 
 
 class RemoteCallTest(unittest.TestCase):
+    def setUp(self):
+        # cleanup remote_functions
+        RemoteFunction.remote_functions = []
+
     def test_register_functional(self):
         def fun2(a: ctypes.c_bool, b: ctypes.c_byte, c: ctypes.c_uint64, d:
                  ctypes.c_int64, e: ctypes.c_double, f: ctypes.c_char_p, g:
@@ -36,8 +42,9 @@ class RemoteCallTest(unittest.TestCase):
             pass
 
         RemoteFunction(fun2)
-        plug = Plugin("foo", "bar", "bob", "alice")
-        mock_send = mocks.rpc_connection_send(plug._rpc)
+        core = Core()
+        plug = Plugin("foo", "bar", "bob", "alice", core)
+        mock_send = mocks.rpc_connection_send(core._rpc)
 
         plug.register(blocking=False)
         outgoing = msgpack.unpackb(mock_send.call_args[0][0])
@@ -48,14 +55,12 @@ class RemoteCallTest(unittest.TestCase):
         self.assertIn([b'fun2', b'', [False, b'', 3, -1, 2.0, b'', -1]],
                       outgoing[3][1])
 
-        # cleanup remote_functions
-        RemoteFunction.remote_functions = {}
-
     def test_run_functional(self):
-        plug = Plugin("foo", "bar", "bob", "alice")
-        mock_send = mocks.rpc_connection_send(plug._rpc)
+        core = Core()
+        rplug = RemotePlugin("plugin_id", "foo", "bar", "bob", "alice", core)
+        mock_send = mocks.rpc_connection_send(core._rpc)
 
-        plug.run("plugin_id", "function", [1, "hi", 42.317, b'hi'])
+        rplug.run("function", [1, "hi", 42.317, b'hi'])
         outgoing = msgpack.unpackb(mock_send.call_args[0][0])
 
         self.assertEqual(0, outgoing[0])
@@ -65,13 +70,13 @@ class RemoteCallTest(unittest.TestCase):
         self.assertEqual([1, b'hi', 42.317, b'hi'], outgoing[3][2])
 
     def test_connect_functional(self):
-        plug = Plugin("foo", "bar", "bob", "alice")
+        core = Core()
 
-        mock_sock = mocks.connection_socket(plug._rpc._connection)
-        plug._rpc._connection.listen = Mock()
-        plug._rpc._connection._init_crypto = Mock()
+        mock_sock = mocks.connection_socket(core._rpc._connection)
+        core._rpc._connection.listen = Mock()
+        core._rpc._connection._init_crypto = Mock()
 
-        plug.connect("localhost", 1234)
+        core.connect("localhost", 1234)
         ip = mock_sock.connect.call_args[0][0][0]
         port = mock_sock.connect.call_args[0][0][1]
 

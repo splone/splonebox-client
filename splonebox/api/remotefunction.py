@@ -22,7 +22,8 @@ from types import FunctionType
 
 
 class RemoteFunction():
-    """Annotate Remote Functions with @RemoteFunction
+    """Wrapper class for remote functions
+
     Make sure,  that you specify the types for your parameters:
 
     Valid choices:
@@ -35,9 +36,7 @@ class RemoteFunction():
         foo(x,p)
 
     """
-    # Functions are stored as tuple in a dict
-    # { "name": (<Function reference>,[<Function name>, <Description>, <Arguments>[]] }
-    remote_functions = {}
+    remote_functions = []
 
     # The values are picked to avoid confusion between types!
     _default_arg_values = {ctypes.c_bool: False,
@@ -60,24 +59,20 @@ class RemoteFunction():
 
         argtypes = function.__annotations__
         if len(argtypes) != argc and argc != 0:
-            return  # invalid function.
+            raise TypeError("Function arguments not annotated properly")
 
         if len(argtypes) != 0:
             argnames = function.__code__.co_varnames[:argc]
             for n in argnames:
                 arg = self._default_arg_values.get(argtypes[n])
                 if arg is None:
-                    return  # invalid function
+                    raise TypeError("Function arguments not annotated properly")
                 self.args.append(arg)
 
         if self.__doc__ is None:
-            doc = ""
-        else:
-            doc = self.__doc__
+            self.__doc__ = ""
 
-        # Add function to dict of remote functions
-        RemoteFunction.remote_functions[self.__name__] = (
-            self, [self.__name__, doc, self.args])
+        RemoteFunction.remote_functions.append(self)
 
     def __call__(self, *args, **kwargs):
         args = args[0]

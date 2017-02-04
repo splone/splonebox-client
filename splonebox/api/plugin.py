@@ -16,139 +16,71 @@ along with this splonebox python client library.  If not,
 see <http://www.gnu.org/licenses/>.
 
 """
-
 import logging
-
 from threading import Thread, ThreadError
+from types import FunctionType
 
-from splonebox.rpc.message import MResponse, MRequest, InvalidMessageError
-from splonebox.rpc.msgpackrpc import MsgpackRpc
-from splonebox.api.apicall import ApiRegister, ApiRun
+from splonebox.rpc.message import MRequest, InvalidMessageError
+from splonebox.api.apicall import ApiRun, ApiResult, ApiRegister
 from splonebox.api.remotefunction import RemoteFunction
-from splonebox.api.result import RunResult, Result, RegisterResult
+from splonebox.api.core import Core
 
 
 class Plugin:
-    def __init__(self,
-                 name: str,
-                 desc: str,
-                 author: str,
-                 licence: str,
-                 debug=False):
+    def __init__(self, name: str, desc: str, author: str, licence: str, core:
+                 Core):
         """
         :param name: Name of the plugin
         :param desc: Description of the plugin
         :param author: Author of the plugin
         :param licence: License of the plugin
-        :param debug: If true more information will be printed to the output
-        :param serverlongtermpk: The server's longterm key
-        (if set, path is ignored!)
-        :param serverlongtermpk_path: path to file containing the
-        server's longterm key
+        :param core: Core instance
         """
         # [<name>, <description>, <author>, <license>]
         self._metadata = [name, desc, author, licence]
+        self.function_meta = {}
 
-        self._rpc = MsgpackRpc()
-        # register run function @ rpc dispatcher
-        self._rpc.register_function(self._handle_run, "run")
-
-        # pending_responses
-        self._responses_pending = {int: Result()}  # msgid: result
-        # pending_results
-        self._results_pending = {int: Result()}  # call_id: result
         # active threads
         self._active_threads = {int: Thread()}
 
-        # set logging level
-        if debug:
-            logging.basicConfig(level=logging.INFO)
-        logging.info("Plugin object created..\n")
+        core.set_run_handler(self._handle_run)
+        self.core = core
 
-    def connect(self, name: str, port: int):
-        # Note: This wraps Connection.connect(name,port)
-        """Connects to given host
+        # A dict containing all functions this plugin wants to register
+        self.functions = {}
 
-        :param name: (ip/web address)
-        :param port: Host's Port
-        :raises: :ConnectionRefusedError if socket is unable to connect
-        :raises: socket.gaierror if Host unknown
-        :raises: :ConnectionError if hostname or port are invalid types
+        for f in RemoteFunction.remote_functions:
+            self.functions[f.__name__] = f
+            self.function_meta[f.__name__] = [f.__doc__, f.args]
+
+    def add_function(self, func: FunctionType):
+        """ Manually add a function to the plugin
+        (Note: Functions with the @RemoteFunction decorator are
+        added automatically)
         """
-        self._rpc.connect(name, port)
+        f = RemoteFunction(func)
+        self.functions[f.__name__] = f
+        self.function_meta[f.__name__] = [f.__doc__, f.args]
 
     def register(self, blocking=True):
-        """Registers the Plugin and all annotated functions @ the core.
+        """Registers the Plugin @ the core.
+        This call is blocking by default
 
         :raises :InvalidApiCallError if something is wrong with the metadata
-                 or functions
+        or functions
         :raises :BrokenPipeError if something is wrong with the connection
         :raises :RemoteError if the register call was invalid
-        :returns :RegisterResult if non blocking
         """
-        # Register functions remotely
-        # all we need is the function's metadata
-        functions = []
-        for name, inf in RemoteFunction.remote_functions.items():
-            functions.append(inf[1])
-        # Create a register call
+        fun_meta = [[k, v[0], v[1]] for k, v in self.function_meta.items()]
+        reg_call = ApiRegister(self._metadata, fun_meta)
 
-        reg = ApiRegister(self._metadata, functions)
+        result = self.core.send_register(reg_call)
 
-        # send the msgpack-rpc formatted message
-        self._rpc.send(reg.msg, self._handle_response)
-        result = RegisterResult()
-        self._responses_pending[reg.msg.get_msgid()] = result
         if blocking:
             result.await()
+            return
         else:
             return result
-
-    def _handle_response(self, response: MResponse):
-        """Default function for handling responses
-
-        :param responset: Response Message containing response/error
-        """
-        result = self._responses_pending.pop(response.get_msgid())
-        if response.error is not None:
-            result.set_error([response.error[0], response.error[1].decode(
-                'ascii')])
-        else:
-            if result.get_type() == 0:
-                # We received a response for a register call
-                if response.error is None and response.response == []:
-                    result.success()
-                else:
-                    result.set_error([400, "Received invalid Response"])
-            elif result.get_type() == 1:
-                # we received a response for a run call
-                result.set_id(response.response[0])
-                self._results_pending[result.get_id()] = result
-
-    def run(self, plugin_id: str, function: str, arguments: []):
-        """Run a remote function and return a :Result
-
-        :param has_result: Does the called function have a result?
-        :param plugin_id: Identifier of the plugin
-        :param function: name of the function
-        :param arguments: function arguments | empty list or None for no args
-        :return: :RunResult
-        :raises :RemoteRunError if run call failed
-        """
-        run_call = ApiRun(plugin_id, function, arguments)
-        self._rpc.send(run_call.msg, self._handle_response)
-
-        result = RunResult()
-        self._responses_pending[run_call.msg.get_msgid()] = result
-        return result
-
-    def listen(self):
-        """Waits until the connection is closed"""
-        self._rpc.listen()
-
-    def stop(self):
-        """Stops the plugin"""
-        self._rpc.disconnect()
 
     def _handle_run(self, msg: MRequest):
         """Callback to handle run requests
@@ -156,28 +88,17 @@ class Plugin:
         :param msg: Message containing run Request (MRequest)
         """
 
-        response = MResponse(msg.get_msgid())
-        # TODO: Verify call id!
-
         try:
             call = ApiRun.from_msgpack_request(msg)
         except InvalidMessageError:
-            response.error = [400, "Received Message is not a valid run call"]
-            self._rpc.send(response)
-            return
+            return [400, "Message is not a valid run call"], None
 
         try:
-            fun = RemoteFunction.remote_functions[call.get_method_name()][0]
+            fun = self.functions[call.get_method_name()]
         except KeyError:
-            response.error = [404, "Function does not exist!"]
-            self._rpc.send(response)
-            return
+            return [404, "Function does not exist!"], None
 
-        # Send execution validation
-        response.response = [msg.arguments[0][1]]
-        self._rpc.send(response)
-
-        # start new thread for call. Implement stop API call
+        # start new thread for call. TODO: Implement stop API call
         try:
             t = Thread(target=self._execute_function,
                        args=(fun,
@@ -187,30 +108,29 @@ class Plugin:
             # store active process
             self._active_threads[msg.arguments[0][1]] = t
 
-        except ThreadError:
-            # Error handling on API -level
-            pass
+        except ThreadError as e:
+            return [420, "Thread error:"+e.__str__()]
+
+        return None, [msg.arguments[0][1]]
 
     def _execute_function(self, fun, args, call_id):
-        msg_result = MRequest()
-        msg_result.function = "result"
         try:
             result = fun(args)
-            # Send Result
-            msg_result.arguments = [[call_id], [result]]
-            # self._rpc.send(msg_result)
-            logging.info("Would send result: " + msg_result.__str__())
-        # TODO: Error handling on API-level (not discussed yet - errors will be
-        # ignored!)
-        except TypeError:
+            if result is None:
+                return
+
+            result_call = ApiResult(call_id, result)
+            self.core.send_result(result_call)
+
+            # TODO: Error handling on API-level (not discussed yet -
+            # errors will be ignored)!
+        except TypeError as e:
+            logging.error("ERROR: " + e.__str__())
             pass
-        except Exception:
+        except Exception as e:
+            logging.error("ERROR: " + e.__str__())
             pass
 
 
 class PluginError(Exception):
-    def __init__(self, value: str):
-        self.value = value
-
-    def __str__(self) -> str:
-        return self.value
+    pass

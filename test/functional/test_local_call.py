@@ -22,12 +22,17 @@ import unittest
 from unittest.mock import Mock
 
 from splonebox.api.apicall import ApiRun
+from splonebox.api.core import Core
 from splonebox.api.plugin import Plugin
 from splonebox.api.remotefunction import RemoteFunction
 from test import mocks
 
 
 class LocalCall(unittest.TestCase):
+    def setUp(self):
+        # cleanup remote_functions
+        RemoteFunction.remote_functions = []
+
     def test_run_incoming(self):
         mock_foo = Mock()
 
@@ -38,16 +43,15 @@ class LocalCall(unittest.TestCase):
 
         RemoteFunction(foo)
 
-        plug = Plugin("foo", "bar", "bob", "alice")
-        mocks.plug_rpc_send(plug)  # ignore responses here
-
-        mock_send = mocks.rpc_send(plug._rpc)
+        core = Core()
+        plug = Plugin("foo", "bar", "bob", "alice", core)
+        mock_send = mocks.core_rpc_send(core)
 
         # pretend that we received a message
         call = ApiRun("id", "foo", [True, b'hi', 5, -82, 7.23, "hi", 64])
         call.msg.arguments[0][0] = None  # remove plugin_id
         call.msg.arguments[0][1] = 123  # set some call id
-        plug._rpc._message_callback(call.msg.pack())
+        core._rpc._message_callback(call.msg.pack())
 
         # wait for execution to finish
         plug._active_threads[123].join()
@@ -65,6 +69,3 @@ class LocalCall(unittest.TestCase):
         # self.assertEqual(msg.get_type(), 0)
         # self.assertEqual(msg.function, "result")
         # self.assertEqual(msg.arguments[0][0], 123)
-
-        # cleanup remote_functions
-        RemoteFunction.remote_functions = {}

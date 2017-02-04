@@ -19,7 +19,7 @@ see <http://www.gnu.org/licenses/>.
 
 import copy
 
-from splonebox.rpc.message import MRequest, InvalidMessageError
+from splonebox.rpc.message import MRequest, MNotify, InvalidMessageError
 
 
 class ApiCall:
@@ -34,40 +34,18 @@ class ApiCall:
 
 class ApiRegister(ApiCall):
     """Register api call.
-    [
-        msgid, # some random number. Handled my :class: `Message`
-        type,  # 0 Since it is a Request Type (See :class: `Message`)
-        method, # "register" for obvious reasons
-        [
-            [                          # Metadata
-                <plugin name>,
-                <description>,
-                ...
-            ],
-            [                          # List of functions
-                [                  # Function description (See :Plugin:)
-                    <function name>,
-                    <function descripton>,
-                    [<arg (="")>, <arg(=0)>] # Value is given to identify the type
-                ],
-                [...]
-            ]
 
-        ]
-    ]
-    """
-    _valid_args = ["", 3, -1, False, 2.0, b'']
-
-    def __init__(self, metadata: [], functions: []):
-        """
-        :param metadata: The Plugins Metadata:
+        :param metadata: The Plugins Metadata
                     ["name", "description", "author", "license"]
 
         :param functions: list of function descriptions
                     [[name,desc,[arg1,arg2..]], ...]
 
-        :raises :InvalidApiCallError if the information is invalid
-        """
+        :raises InvalidApiCallError: if the information is invalid
+    """
+    _valid_args = ["", 3, -1, False, 2.0, b'']
+
+    def __init__(self, metadata: [], functions: []):
         super().__init__()
         if metadata is None or None in metadata:
             raise InvalidApiCallError("Plugin's metadata is not set properly")
@@ -100,36 +78,45 @@ class ApiRegister(ApiCall):
 
 class ApiRun(ApiCall):
     """Run api call
-    [
-    msgid, # some random number. Handled my :class: `Message`
-    type,  # 0 Since it is a Request Type (See :class: `Message`)
-    method, # "run" for obvious reasons
-        [
-            [                          # Metadata
-                <(target) plugin_id>,
-                call_id
-            ],
-            <function name>,
-            [                          # Functions
-                <arg1>,
-                <arg2>,
-                ...
-            ]
-        ]
+    :param plugin_id: plugin identifier of the plugin to be called
+    :param function_name: function wto be called
+    :param args: list of arguments for the remote function
+    :raises InvalidApiCallError: if the Information is invalid
     """
     _valid_types = (str, bytes, int, float, bool)
 
+    def __init__(self, plugin_id: str, function_name: str, args: []):
+        super().__init__()
+
+        if not isinstance(plugin_id, str):
+            raise InvalidApiCallError("plugin identifier has to be a string")
+
+        if not isinstance(function_name, str):
+            raise InvalidApiCallError("function name has to be a string")
+
+        if args is None:
+            args = []
+
+        for arg in args:
+            if not isinstance(arg, ApiRun._valid_types):
+                raise InvalidApiCallError("Invalid Argument type!")
+
+        self.msg = MRequest()
+        self.msg.function = "run"
+        self.msg.arguments = [[plugin_id, None], function_name, args]
+
     @staticmethod
     def from_msgpack_request(msg: MRequest):
-        """ Turns a :MRessage to ApiRun
+        """ Generates an ApiRun object from a given MRequest
 
         :param msg: A Request received and unpacked with MsgpackRpc. It is
                     assumed, that the strings in msg.body are still in
                     binary format!
         :return: ApiRun
-        :raises: :InvalidMessageError if provided message is
+        :raises  InvalidMessageError: if provided message is
                     not a valid Run call
         """
+
         if not isinstance(msg.function, str) or msg.function != "run":
             raise InvalidMessageError(
                 "Invalid run Request, specified method is not run")
@@ -165,32 +152,6 @@ class ApiRun(ApiCall):
 
         return call
 
-    def __init__(self, plugin_id: str, function_name: str, args: []):
-        """
-        :param plugin_id: plugin identifier of the plugin to be called
-        :param function_name: function wto be called
-        :param args: list of arguments for the remote function
-        :raises :InvalidApiCallError if the Information is invalid
-        """
-        super().__init__()
-
-        if not isinstance(plugin_id, str):
-            raise InvalidApiCallError("plugin identifier has to be a string")
-
-        if not isinstance(function_name, str):
-            raise InvalidApiCallError("function name has to be a string")
-
-        if args is None:
-            args = []
-
-        for arg in args:
-            if not isinstance(arg, ApiRun._valid_types):
-                raise InvalidApiCallError("Invalid Argument type!")
-
-        self.msg = MRequest()
-        self.msg.function = "run"
-        self.msg.arguments = [[plugin_id, None], function_name, args]
-
     def get_method_args(self):
         return self.msg.arguments[2]
 
@@ -201,9 +162,98 @@ class ApiRun(ApiCall):
         return self.msg.arguments[1]
 
 
-class InvalidApiCallError(Exception):
-    def __init__(self, value: str):
-        self.value = value
+class ApiResult(ApiCall):
+    """Result api call
 
-    def __str__(self) -> str:
-        return self.value
+    :param call_id: The result is related to this call id
+    :param result: The call's result (is automatically wrapped in a list)
+    """
+    def __init__(self, call_id: int, result):
+        super().__init__()
+
+        if not isinstance(call_id, int):
+            raise InvalidApiCallError("call_id has to be an integer")
+
+        if result is None:
+            raise InvalidApiCallError("Result can not be none!")
+
+        self.msg.function = "result"
+        self.msg.arguments = [[call_id], [result]]
+
+    @staticmethod
+    def from_msgpack_request(msg: MRequest):
+
+        if not isinstance(msg.function, str) or msg.function != "result":
+            raise InvalidMessageError(
+                "Invalid result Request, specified method is not result")
+
+        if not isinstance(msg.arguments, list):
+            raise InvalidMessageError(
+                "Invalid result Request, arguments is not a list")
+
+        if len(msg.arguments) != 2:
+            raise InvalidMessageError(
+                "Invalid result Request, arguments length has to be 2")
+
+        if not isinstance(msg.arguments[0], list) or len(msg.arguments[0]) != 1:
+            raise InvalidMessageError(
+                "Invalid result Request, call_id is not in a list")
+
+        if not isinstance(msg.arguments[1], list) or len(msg.arguments[1]) != 1:
+            raise InvalidMessageError(
+                "Invalid result Request, result is not in a list")
+
+        result = ApiResult(msg.arguments[0][0], msg.arguments[1][0])
+        result.msg._msgid = msg._msgid
+
+        return result
+
+    def get_call_id(self) -> int:
+        return self.msg.arguments[0][0]
+
+    def get_result(self):
+        return self.msg.arguments[1][0]
+
+
+class ApiBroadcast(ApiCall):
+    def __init__(self, event_name: str, args: [], as_notification=True):
+        super().__init__()
+
+        if not isinstance(event_name, str):
+            raise InvalidApiCallError("Event name has to be string")
+
+        # This is for simple "ping" notifications
+        if args is None:
+            args = []
+
+        if not isinstance(args, list):
+            raise InvalidApiCallError("Event args have to be list or None")
+
+        if as_notification:
+            self.msg = MNotify("broadcast", [event_name, args])
+        else:
+            self.msg.function = "broadcast"
+            self.msg.arguments = [event_name, args]
+
+
+class ApiSubscribe(ApiCall):
+    def __init__(self, event_name: str):
+        super().__init__()
+        if not isinstance(event_name, str):
+            raise InvalidApiCallError("Event name has to be string")
+
+        self.msg.function = "subscribe"
+        self.msg.arguments = [event_name]
+
+
+class ApiUnsubscribe(ApiCall):
+    def __init__(self, event_name: str):
+        super().__init__()
+        if not isinstance(event_name, str):
+            raise InvalidApiCallError("Event name has to be string")
+        self.msg.function = "unsubscribe"
+        self.msg.arguments = [event_name]
+
+
+class InvalidApiCallError(Exception):
+    pass
