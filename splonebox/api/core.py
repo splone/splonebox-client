@@ -37,6 +37,7 @@ class Core():
         self._responses_pending = {int: Response()}
         self._results_pending = {int: RunResult()}  # call_id: result
         self._subscriptions = {}
+        self.connected = False
 
     def enable_debugging(self):
         logging.basicConfig(level=logging.INFO)
@@ -47,6 +48,7 @@ class Core():
         :param port: Host's port
         """
         self._rpc.connect(addr, port)
+        self.connected = True
 
     def listen(self):
         """Listen for incoming messages from server"""
@@ -55,6 +57,7 @@ class Core():
     def disconnect(self):
         """Disconnect from server"""
         self._rpc.disconnect()
+        self.connected = False
 
     def set_run_handler(self, function):
         """ Set the function to be called on incomming run requests """
