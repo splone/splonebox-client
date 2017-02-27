@@ -32,7 +32,7 @@ class Connection:
         self._ip = None
         self._port = None
         self._listen_thread = None
-        self._socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self._socket = None
         self._disconnected = threading.Event()
         self._disconnected.set()
         self.crypto_context = Crypto.by_path()
@@ -57,11 +57,11 @@ class Connection:
         :raises: socket.gaierror if Host unknown
         :raises: :ConnectionError if hostname or port are invalid types
         """
-
         self._ip = socket.gethostbyname(hostname)
         self._port = port
 
         logging.debug("Connecting to host: " + hostname + ":" + port.__str__())
+        self._socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self._socket.connect((self._ip, self._port))
         logging.debug("Connected to: " + self._ip + ":" + port.__str__())
 
